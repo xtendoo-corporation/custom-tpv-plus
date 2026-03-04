@@ -20,6 +20,7 @@
             'tpv_plus_pos_restaurant_tables/static/src/**/*',
         ],
     },
+    'images': ['static/description/icon.png'],
     'installable': True,
     'application': False,
     'auto_install': False,
