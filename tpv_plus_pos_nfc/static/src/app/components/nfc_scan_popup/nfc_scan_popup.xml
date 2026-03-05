@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates id="template" xml:space="preserve">
+    <t t-name="tpv_plus_pos_nfc.NfcScanPopup">
+        <Dialog title="'Escanear NFC o Código de Barras'" size="'md'">
+            <div class="nfc-scan-popup d-flex flex-column align-items-center p-3">
+
+                <!-- Animated scan icon -->
+                <div class="nfc-scan-icon-container mb-4">
+                    <div t-attf-class="nfc-scan-icon-circle {{ state.status === 'success' ? 'success' : state.status === 'error' ? 'error' : 'pulse' }}">
+                        <i t-if="state.status === 'success'" class="fa fa-check fa-3x text-white" />
+                        <i t-elif="state.status === 'error'" class="fa fa-exclamation-triangle fa-3x text-white" />
+                        <i t-else="" class="fa fa-wifi fa-3x nfc-icon-rotate" />
+                    </div>
+                </div>
+
+                <!-- Status message -->
+                <div class="nfc-scan-status mb-3 text-center">
+                    <span t-attf-class="fs-5 fw-semibold {{ state.status === 'success' ? 'text-success' : state.status === 'error' ? 'text-danger' : 'text-muted' }}">
+                        <t t-esc="state.statusMessage" />
+                    </span>
+                </div>
+
+                <!-- NFC / Barcode badges -->
+                <div class="d-flex gap-2 mb-4">
+                    <span t-attf-class="badge rounded-pill fs-6 px-3 py-2 {{ state.nfcActive ? 'bg-success' : (state.nfcSupported ? 'bg-warning text-dark' : 'bg-secondary') }}">
+                        <i class="fa fa-rss me-1" />
+                        NFC <t t-if="state.nfcActive">Activo</t><t t-elif="state.nfcSupported">Inactivo</t><t t-else="">No disponible</t>
+                    </span>
+                    <span class="badge rounded-pill bg-primary fs-6 px-3 py-2">
+                        <i class="fa fa-barcode me-1" />
+                        Código de barras Listo
+                    </span>
+                </div>
+
+                <!-- Value field -->
+                <div class="w-100 mb-3">
+                    <label class="form-label fw-bold fs-5 text-center d-block">Valor escaneado</label>
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-light">
+                            <i class="fa fa-tag" />
+                        </span>
+                        <input
+                            t-ref="valueInput"
+                            type="text"
+                            class="form-control form-control-lg nfc-scan-value-input text-center fw-bold fs-4"
+                            t-att-value="state.value"
+                            t-on-input="onInputChange"
+                            placeholder="Esperando escaneo…"
+                            readonly="1"
+                        />
+                        <button t-if="state.value" class="btn btn-outline-secondary" t-on-click="clearValue">
+                            <i class="fa fa-times" />
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Instruction text -->
+                <div class="text-center text-muted small mb-3">
+                    <p class="mb-1">
+                        <i class="fa fa-info-circle me-1" />
+                        Pase un tag NFC/RFID cerca del dispositivo o escanee un código de barras.
+                    </p>
+                    <p class="mb-0" t-if="!state.nfcSupported">
+                        <i class="fa fa-exclamation-circle me-1 text-warning" />
+                        Su navegador no soporta Web NFC. Use un escáner de código de barras.
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- Footer buttons -->
+            <t t-set-slot="footer">
+                <div class="d-flex w-100 gap-2">
+                    <button class="btn btn-secondary btn-lg flex-fill" t-on-click="cancel">
+                        <i class="fa fa-times me-2" />Cancelar
+                    </button>
+                    <button t-attf-class="btn btn-lg flex-fill {{ state.value ? 'btn-success' : 'btn-outline-success disabled' }}"
+                            t-on-click="confirm"
+                            t-att-disabled="!state.value">
+                        <i class="fa fa-check me-2" />Aceptar
+                    </button>
+                </div>
+            </t>
+        </Dialog>
+    </t>
+</templates>
+

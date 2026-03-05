@@ -1,0 +1,117 @@
+/* ===== TPV Plus - NFC Scan Button & Popup ===== */
+
+/* ─── Action Pad Button ─── */
+.nfc-scan-btn {
+    background: linear-gradient(135deg, #0d6efd, #0dcaf0) !important;
+    border: 2px solid #0a58ca !important;
+    color: #fff !important;
+    border-radius: 12px !important;
+    transition: all 0.15s ease;
+    letter-spacing: 0.5px;
+
+    &:hover {
+        background: linear-gradient(135deg, #0a58ca, #0bb5d9) !important;
+        box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        transform: translateY(1px);
+        box-shadow: none;
+    }
+}
+
+/* ─── Popup ─── */
+.nfc-scan-popup {
+    min-height: 320px;
+}
+
+/* Animated circle container */
+.nfc-scan-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nfc-scan-icon-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+
+    /* Default pulsing state */
+    &.pulse {
+        background: linear-gradient(135deg, #0d6efd, #0dcaf0);
+        animation: nfc-pulse 2s infinite;
+        color: #fff;
+    }
+
+    &.success {
+        background: linear-gradient(135deg, #198754, #20c997);
+        animation: nfc-pop 0.3s ease-out;
+    }
+
+    &.error {
+        background: linear-gradient(135deg, #dc3545, #fd7e14);
+        animation: nfc-shake 0.4s ease;
+    }
+}
+
+/* Rotated NFC/wifi icon */
+.nfc-icon-rotate {
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+/* Value input highlight on filled */
+.nfc-scan-value-input {
+    border: 2px solid #dee2e6;
+    transition: all 0.2s ease;
+
+    &:not([value=""]):not(:placeholder-shown) {
+        border-color: #198754 !important;
+        background-color: #f0fff4 !important;
+        color: #198754 !important;
+    }
+}
+
+/* ─── Animations ─── */
+@keyframes nfc-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.5);
+    }
+    70% {
+        box-shadow: 0 0 0 20px rgba(13, 110, 253, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+    }
+}
+
+@keyframes nfc-pop {
+    0% {
+        transform: scale(0.8);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes nfc-shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-8px);
+    }
+    75% {
+        transform: translateX(8px);
+    }
+}
+
