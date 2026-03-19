@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <templates id="template" xml:space="preserve">
-    <!-- Insert the NFC scan button BEFORE the recharge button -->
     <t t-name="tpv_plus_pos_nfc.ActionpadWidget" t-inherit="point_of_sale.ActionpadWidget" t-inherit-mode="extension">
-        <xpath expr="//button[hasclass('recharge-btn')]" position="before">
+        <xpath expr="//div[hasclass('actionpad')]" position="inside">
             <button class="nfc-scan-btn btn btn-lg py-3 d-flex align-items-center justify-content-center w-100 mt-2"
                     t-on-click="() => pos.openNfcScanWizard()">
                 <i class="fa fa-wifi me-2" />

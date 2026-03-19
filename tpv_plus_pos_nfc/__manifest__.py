@@ -13,7 +13,7 @@
     'version': '19.0.1.0.0',
     'author': 'TPV Plus',
     'category': 'Point of Sale',
-    'depends': ['point_of_sale', 'tpv_plus_pos_recharge'],
+    'depends': ['point_of_sale', 'pos_loyalty', 'tpv_purse_price_variable'],
     'assets': {
         'point_of_sale._assets_pos': [
             'tpv_plus_pos_nfc/static/src/**/*',
