@@ -10,7 +10,8 @@ patch(FloorScreen.prototype, {
     setup() {
         super.setup(...arguments);
         onMounted(() => {
-            this.feriaEnsureDefaultTables();
+            // Disabled to prevent concurrent table duplication when multiple clients load simultaneously
+            // this.feriaEnsureDefaultTables();
         });
     },
 

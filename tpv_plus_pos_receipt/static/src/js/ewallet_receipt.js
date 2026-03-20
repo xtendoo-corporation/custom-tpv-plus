@@ -5,31 +5,15 @@ patch(PosOrder.prototype, {
     getEWalletReceiptInfo() {
         const result = [];
         const orderlines = this.getOrderlines() || [];
-        console.log("[eWallet Receipt] Total orderlines:", orderlines.length);
         // Buscar reward lines de tipo eWallet
         const eWalletRewardLines = orderlines.filter((line) => {
-            console.log("[eWallet Receipt] Line:", line.full_product_name,
-                "is_reward_line:", line.is_reward_line,
-                "coupon_id:", line.coupon_id,
-                "reward_id:", line.reward_id);
             if (!line.is_reward_line) {
                 return false;
             }
             // Intentar obtener el programa por varias vias
             const coupon = line.coupon_id;
-            if (coupon) {
-                console.log("[eWallet Receipt] Coupon found:", coupon.id,
-                    "program_id:", coupon.program_id,
-                    "program_type:", coupon.program_id?.program_type,
-                    "points:", coupon.points);
-            }
             // Tambien verificar reward_id -> program_id
             const reward = line.reward_id;
-            if (reward) {
-                console.log("[eWallet Receipt] Reward found:", reward.id,
-                    "program_id:", reward.program_id,
-                    "program_type:", reward.program_id?.program_type);
-            }
             // Verificar por coupon
             if (coupon && coupon.program_id && coupon.program_id.program_type === "ewallet") {
                 return true;
@@ -40,7 +24,6 @@ patch(PosOrder.prototype, {
             }
             return false;
         });
-        console.log("[eWallet Receipt] eWallet reward lines found:", eWalletRewardLines.length);
         if (eWalletRewardLines.length === 0) {
             return result;
         }
@@ -72,11 +55,6 @@ patch(PosOrder.prototype, {
                 remainingBalance = currentBalance - data.totalUsed;
             }
             const programName = data.program ? (data.program.name || "Monedero Electronico") : "Monedero Electronico";
-            console.log("[eWallet Receipt] Program:", programName,
-                "Used:", data.totalUsed,
-                "Current balance:", currentBalance,
-                "Remaining:", remainingBalance,
-                "Finalized:", this.finalized);
             result.push({
                 programName: programName,
                 amountUsed: parseFloat(data.totalUsed.toFixed(2)),

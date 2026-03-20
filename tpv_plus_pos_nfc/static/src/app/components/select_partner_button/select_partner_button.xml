@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates id="template" xml:space="preserve">
+    <t t-name="tpv_plus_pos_nfc.SelectPartnerButton" t-inherit="point_of_sale.SelectPartnerButton" t-inherit-mode="extension">
+        <xpath expr="//button" position="attributes">
+            <attribute name="t-attf-class">{{ props.partner ? 'btn-feria-partner-active shadow-sm' : 'btn-feria-partner-empty' }} flex-grow-1 flex-shrink-1</attribute>
+            <attribute name="class" remove="w-auto" separator=" " />
+        </xpath>
+        <xpath expr="//div[contains(@class, 'text-action')]" position="before">
+            <i t-if="props.partner" class="fa fa-user-circle me-2 fs-2 text-white" />
+        </xpath>
+        <xpath expr="//div[contains(@class, 'text-action') or self::t]" position="attributes">
+            <attribute name="class" add="fw-black fs-3 text-uppercase" separator=" " />
+        </xpath>
+    </t>
+</templates>

@@ -4,6 +4,7 @@ import { PosStore } from "@point_of_sale/app/services/pos_store";
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
 import { NfcScanPopup } from "@tpv_plus_pos_nfc/app/components/nfc_scan_popup/nfc_scan_popup";
+import { MismatchedPartnerPopup } from "@tpv_plus_pos_nfc/app/components/mismatched_partner_popup/mismatched_partner_popup";
 import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { formatCurrency } from "@point_of_sale/app/models/utils/currency";
@@ -43,11 +44,21 @@ patch(PosStore.prototype, {
             return;
         }
 
-        if (order.getPartner()?.id !== partner.id) {
-            this.setPartnerToCurrentOrder(partner);
-            await this.updateRewards?.();
+        const currentPartner = order.getPartner();
+        let confirmedPayload = true;
+        if (currentPartner && currentPartner.id !== partner.id) {
+            confirmedPayload = await makeAwaitable(this.dialog, MismatchedPartnerPopup, {
+                currentPartner: currentPartner,
+                scannedPartner: partner,
+            });
+            if (!confirmedPayload) {
+                return;
+            }
         }
 
+        // Always keep current partner if mismatch was confirmed with "keep"
+        const targetPartner = confirmedPayload === "keep" ? currentPartner : partner;
+        
         const ewalletPrograms = this.models["loyalty.program"].filter(
             (program) => program.program_type === "ewallet"
         );
@@ -60,9 +71,18 @@ patch(PosStore.prototype, {
         }
 
         this._tpvNfcRemoveExistingEwalletRewardLines(order);
+        
+        const walletCard = this._tpvNfcGetPartnerEwalletCard(partner);
+        if (walletCard) {
+            order.uiState.couponPointChanges[walletCard.id] = {
+                coupon_id: walletCard.id,
+                program_id: walletCard.program_id.id,
+                points: walletCard.points,
+            };
+        }
+
         await this.updateRewards?.();
 
-        const walletCard = this._tpvNfcGetPartnerEwalletCard(partner);
         const walletBalance = walletCard?.points || 0;
         const orderTotal = Math.max(order.priceIncl, 0);
         const formattedBalance = formatCurrency(walletBalance, order.currency);
@@ -172,13 +192,24 @@ patch(PosStore.prototype, {
     },
 
     async _tpvNfcValidateCurrentOrder(order) {
+        const isRestaurant = this.config.module_pos_restaurant;
+        const tableId = order.table_id;
+        const partner = order.getPartner();
+
         const validation = new OrderPaymentValidation({
             pos: this,
             orderUuid: order.uuid,
         });
         const isValidated = await validation.validateOrder(false);
-        if (isValidated && this.config.module_pos_restaurant) {
+        if (isValidated && isRestaurant) {
             order.setScreenData({ name: "" });
+
+            if (tableId) {
+                const newOrder = this.addNewOrder({ table_id: tableId.id || tableId });
+                if (partner) {
+                    newOrder.setPartner(partner);
+                }
+            }
         }
     },
 });

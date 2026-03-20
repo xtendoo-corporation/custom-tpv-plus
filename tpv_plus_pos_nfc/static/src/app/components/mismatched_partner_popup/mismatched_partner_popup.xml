@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates id="template" xml:space="preserve">
+    <t t-name="tpv_plus_pos_nfc.MismatchedPartnerPopup">
+        <Dialog title="'¡ATENCIÓN: Cambio de Cliente!'" size="'md'">
+            <div class="mismatched-partner-popup d-flex flex-column align-items-center p-4">
+                
+                <!-- Big Warning Icon -->
+                <div class="warning-icon-container mb-4">
+                    <div class="warning-pulse">
+                        <i class="fa fa-exclamation-triangle fa-5x text-white" />
+                    </div>
+                </div>
+
+                <h2 class="fw-bold text-danger text-center mb-4">SEGURIDAD</h2>
+                
+                <p class="fs-5 text-center mb-4">
+                    La tarjeta NFC leída pertenece a un cliente <strong>distinto</strong> al del pedido actual.
+                </p>
+
+                <!-- Comparison Cards -->
+                <div class="d-flex w-100 gap-3 mb-4 flex-column">
+                    <!-- Current Case -->
+                    <div class="comparison-card current p-3 rounded-4 border border-2 d-flex align-items-center gap-3 bg-blue-light shadow-sm">
+                        <div class="comparison-icon bg-blue rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                            <i class="fa fa-user fa-2x text-white" />
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <small class="text-blue d-block fw-bold">CLIENTE SELECCIONADO</small>
+                            <span class="fs-4 text-truncate d-block fw-bold text-dark" t-esc="props.currentPartner.name" />
+                        </div>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="text-center">
+                        <i class="fa fa-chevron-down fa-2x text-warning" />
+                    </div>
+
+                    <!-- New Case -->
+                    <div class="comparison-card scanned p-3 rounded-4 border border-3 border-success d-flex align-items-center gap-3 bg-white shadow-sm ring-success">
+                        <div class="comparison-icon bg-success rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="fa fa-id-card fa-3x text-white" />
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <small class="text-success d-block fw-bolder" style="letter-spacing: 1px;">TARJETA LEÍDA</small>
+                            <span class="fs-3 text-truncate d-block fw-bolder text-dark" t-esc="props.scannedPartner.name" />
+                        </div>
+                    </div>
+                </div>
+
+                <p class="fs-5 fw-bold text-center text-dark">
+                    ¿Deseas cobrar el pedido actual usando este monedero?
+                </p>
+            </div>
+
+            <t t-set-slot="footer">
+                <div class="d-flex w-100 gap-3 p-1">
+                    <button class="btn btn-outline-secondary btn-lg flex-fill py-3 fs-4" t-on-click="cancel">
+                        <i class="fa fa-times me-2" />CANCELAR
+                    </button>
+                    <button class="btn btn-warning btn-lg flex-fill py-3 fs-3 fw-bold shadow-sm" t-on-click="confirmKeep">
+                        <i class="fa fa-credit-card me-2" />SÍ, COBRAR SIN CAMBIAR
+                    </button>
+                </div>
+            </t>
+        </Dialog>
+    </t>
+</templates>

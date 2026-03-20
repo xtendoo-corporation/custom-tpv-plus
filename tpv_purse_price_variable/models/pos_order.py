@@ -11,7 +11,7 @@ class PosOrder(models.Model):
     _inherit = "pos.order"
 
     def _tpv_purse_log(self, message, *args):
-        _logger.info("[tpv_purse_price_variable] " + message, *args)
+        pass
 
     def _tpv_purse_get_variable_ewallet_program(self, line):
         self.ensure_one()
@@ -284,15 +284,6 @@ class PosOrder(models.Model):
                 coupon_data.pop(coupon_key, None)
 
         payload_snapshot = json.loads(json.dumps(coupon_data or {}))
-        _logger.info(
-            "[tpv_purse_price_variable] confirm_coupon_programs START order_id=%s order_name=%s partner_id=%s partner_name=%s filtered_coupon_keys=%s coupon_data=%s",
-            self.id,
-            self.name,
-            partner.id if partner else False,
-            partner.name if partner else False,
-            filtered_coupon_keys,
-            payload_snapshot,
-        )
 
         if not coupon_data:
             result = {
@@ -301,11 +292,6 @@ class PosOrder(models.Model):
                 "new_coupon_info": [],
                 "coupon_report": {},
             }
-            _logger.info(
-                "[tpv_purse_price_variable] confirm_coupon_programs EARLY RETURN order_id=%s result=%s",
-                self.id,
-                result,
-            )
             return result
 
         result = super().confirm_coupon_programs(coupon_data)
@@ -322,11 +308,5 @@ class PosOrder(models.Model):
             ("source_pos_order_id", "=", self.id),
         ])
 
-        _logger.info(
-            "[tpv_purse_price_variable] confirm_coupon_programs END order_id=%s result=%s related_cards=%s",
-            self.id,
-            result,
-            related_cards.read(["id", "program_id", "partner_id", "points", "code", "source_pos_order_id"]),
-        )
         return result
 

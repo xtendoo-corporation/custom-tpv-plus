@@ -181,6 +181,8 @@ export class NfcScanPopup extends Component {
         if ("vibrate" in navigator) {
             navigator.vibrate(100);
         }
+
+        this.confirm();
     }
 
     _focusInput() {

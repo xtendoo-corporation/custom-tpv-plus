@@ -11,7 +11,7 @@ const TPV_PURSE_LOG_PREFIX = "[tpv_purse_price_variable]";
 
 patch(PosStore.prototype, {
     _tpvPurseDebug(message, payload = {}) {
-        console.info(`${TPV_PURSE_LOG_PREFIX} ${message}`, payload);
+        // console.info(`${TPV_PURSE_LOG_PREFIX} ${message}`, payload);
     },
 
     _tpvPurseSerializeCouponPointChanges(order) {
@@ -75,7 +75,12 @@ patch(PosStore.prototype, {
             );
             let coupon = couponPointChange && this.models["loyalty.card"].get(couponPointChange.coupon_id);
             if (!coupon) {
-                coupon = await this.couponForProgram(program);
+                const partner = order.getPartner();
+                if (partner) {
+                    coupon = await this.fetchLoyaltyCard(program.id, partner.id);
+                } else {
+                    coupon = await this.couponForProgram(program);
+                }
             }
 
             order.uiState.couponPointChanges = Object.fromEntries(
@@ -413,6 +418,17 @@ patch(PosStore.prototype, {
                     }))) || [],
         });
         return result;
+    },
+
+    async couponForProgram(program) {
+        if (program.program_type === "ewallet") {
+            const order = this.getOrder();
+            const partner = order?.getPartner();
+            if (partner) {
+                return await this.fetchLoyaltyCard(program.id, partner.id);
+            }
+        }
+        return await super.couponForProgram(...arguments);
     },
 });
 
