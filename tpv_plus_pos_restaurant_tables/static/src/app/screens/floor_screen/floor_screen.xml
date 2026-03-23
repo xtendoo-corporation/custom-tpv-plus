@@ -8,11 +8,11 @@
                  class="overflow-auto flex-grow-1 flex-shrink-1 flex-basis-0 w-auto bg-view p-3">
                 <!-- Add / Remove table buttons -->
                 <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
-                    <button class="btn btn-success btn-lg d-flex align-items-center gap-2"
+                    <button class="btn btn-secondary btn-lg d-flex align-items-center gap-2"
                             t-on-click="onFeriaAddTable">
                         <i class="fa fa-plus-circle" /> Añadir Mesa
                     </button>
-                    <button class="btn btn-danger btn-lg d-flex align-items-center gap-2"
+                    <button class="btn btn-outline-secondary btn-lg d-flex align-items-center gap-2"
                             t-on-click="onFeriaRemoveLastTable">
                         <i class="fa fa-minus-circle" /> Eliminar Última Mesa
                     </button>

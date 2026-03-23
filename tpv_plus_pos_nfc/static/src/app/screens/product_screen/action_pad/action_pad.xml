@@ -2,7 +2,7 @@
 <templates id="template" xml:space="preserve">
     <t t-name="tpv_plus_pos_nfc.ActionpadWidget" t-inherit="point_of_sale.ActionpadWidget" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('actionpad')]" position="inside">
-            <button class="nfc-scan-btn btn btn-lg py-3 d-flex align-items-center justify-content-center w-100 mt-2"
+            <button class="nfc-scan-btn btn btn-secondary btn-lg py-3 d-flex align-items-center justify-content-center w-100 mt-2"
                     t-on-click="() => pos.openNfcScanWizard()">
                 <i class="fa fa-wifi me-2" />
                 <span class="fw-bold fs-4">Escanear NFC o Código de barras</span>

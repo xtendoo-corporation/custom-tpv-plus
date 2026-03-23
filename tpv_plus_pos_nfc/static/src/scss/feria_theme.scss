@@ -2,7 +2,7 @@
 
 /* High Visibility Customer Button */
 .btn-feria-partner-active {
-    background: linear-gradient(135deg, #2e7d32, #1b5e20) !important;
+    background: #71639e !important;
     border: 3px solid #ffffff !important;
     color: #fff !important;
     padding: 12px 18px !important;
@@ -32,9 +32,9 @@
 }
 
 .btn-feria-partner-empty {
-    border: 2px solid #ffb74d !important;
-    background: #fff3e0 !important;
-    color: #e65100 !important;
+    border: 2px solid #ced4da !important;
+    background: #f8f9fa !important;
+    color: #4c4c4c !important;
     min-height: 70px !important;
     font-size: 1.3rem !important;
     font-weight: bold !important;
@@ -43,11 +43,10 @@
     padding: 12px 24px !important;
 }
 
-/* Make product screen totals more visible */
+/* Make product screen totals more visible (Layout Only) */
 .product-screen .order-summary {
     .total {
         font-size: 3rem !important;
-        color: #2e7d32 !important;
         font-weight: 900 !important;
     }
 }

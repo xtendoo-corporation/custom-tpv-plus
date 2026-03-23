@@ -21,12 +21,12 @@
                 </div>
 
                 <!-- NFC / Barcode badges -->
-                <div class="d-flex gap-2 mb-4">
-                    <span t-attf-class="badge rounded-pill fs-6 px-3 py-2 {{ state.nfcActive ? 'bg-success' : (state.nfcSupported ? 'bg-warning text-dark' : 'bg-secondary') }}">
+                <div t-attf-class="d-flex gap-2 mb-4">
+                    <span t-attf-class="badge rounded-pill fs-6 px-3 py-2 {{ state.nfcActive ? 'text-bg-secondary' : (state.nfcSupported ? 'bg-light text-muted' : 'bg-light text-muted') }}">
                         <i class="fa fa-rss me-1" />
                         NFC <t t-if="state.nfcActive">Activo</t><t t-elif="state.nfcSupported">Inactivo</t><t t-else="">No disponible</t>
                     </span>
-                    <span class="badge rounded-pill bg-primary fs-6 px-3 py-2">
+                    <span class="badge rounded-pill text-bg-secondary fs-6 px-3 py-2">
                         <i class="fa fa-barcode me-1" />
                         Código de barras Listo
                     </span>
@@ -74,7 +74,7 @@
                     <button class="btn btn-secondary btn-lg flex-fill" t-on-click="cancel">
                         <i class="fa fa-times me-2" />Cancelar
                     </button>
-                    <button t-attf-class="btn btn-lg flex-fill {{ state.value ? 'btn-success' : 'btn-outline-success disabled' }}"
+                    <button t-attf-class="btn btn-lg flex-fill {{ state.value ? 'btn-secondary' : 'btn-outline-secondary disabled' }}"
                             t-on-click="confirm"
                             t-att-disabled="!state.value">
                         <i class="fa fa-check me-2" />Aceptar

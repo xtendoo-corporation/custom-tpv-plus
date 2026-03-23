@@ -13,10 +13,10 @@
     height: 150px !important;
     min-width: 170px;
     min-height: 150px;
-    border: 4px solid #2e7d32 !important;
-    background-color: #2e7d32 !important;
+    border: 3px solid #71639e !important;
+    background-color: #71639e !important;
     color: #fff !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     transition: transform 0.1s ease, box-shadow 0.1s ease;
     user-select: none;
     padding: 8px 6px 6px;
@@ -30,35 +30,34 @@
     }
 
     &:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        transform: scale(1.03);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     }
 
     &:active {
-        transform: scale(0.97);
+        transform: scale(0.98);
     }
 }
 
-/* Occupied table = Andalusian Green & White (User requested) */
+/* Occupied table = Odoo Primary Purple */
 .feria-occupied {
-    background: linear-gradient(135deg, #2e7d32, #1b5e20) !important;
+    background: #71639e !important;
     border-color: #ffffff !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
 
     .feria-table-number {
         color: #ffffff !important;
     }
 }
 
-/* Free table = Light Orange (User requested) */
+/* Free table = Standard Odoo Neutral */
 .feria-free {
-    background: linear-gradient(135deg, #fff3e0, #ffe0b2) !important;
-    border-color: #ffb74d !important;
-    color: #e65100 !important;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+    border-color: #dee2e6 !important;
+    color: #4c4c4c !important;
 
     .feria-table-number {
-        color: #ef6c00 !important;
+        color: #6c757d !important;
     }
 }
 
