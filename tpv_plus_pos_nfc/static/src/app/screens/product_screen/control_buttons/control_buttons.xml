@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates id="template" xml:space="preserve">
+    <t t-name="tpv_plus_pos_nfc.ControlButtons"
+       t-inherit="point_of_sale.ControlButtons"
+       t-inherit-mode="extension">
+
+        <!-- 1. Remove the "Note" button that appears inline (always-visible row) -->
+        <xpath expr="//t[InternalNoteButton]" position="replace"/>
+
+        <!-- 2. Remove the "Preset" (Comer allí) button that appears inline -->
+        <xpath expr="//button[@t-if='pos.config.use_presets and !props.showRemainingButtons']" position="replace"/>
+
+        <!-- 3. Remove the "Course" button added by pos_restaurant (it sits before the more-btn) -->
+        <xpath expr="//button[hasclass('course-btn')]" position="replace"/>
+
+        <!-- 4. Add Escanear NFC + Recarga at the TOP of the 3-dots popup, before the existing items -->
+        <xpath expr="//t[@t-if='props.showRemainingButtons']/div" position="inside">
+            <button class="btn btn-secondary btn-lg d-flex align-items-center justify-content-center gap-2"
+                    t-on-click="() => pos.openNfcScanWizard()">
+                <i class="fa fa-wifi"/>
+                <span class="fw-bold">Escanear NFC o Código de barras</span>
+            </button>
+            <button class="btn btn-secondary btn-lg d-flex align-items-center justify-content-center gap-2"
+                    t-on-click="() => pos.openRechargeWizard()">
+                <i class="fa fa-credit-card"/>
+                <span class="fw-bold">Recarga</span>
+            </button>
+        </xpath>
+
+    </t>
+</templates>
