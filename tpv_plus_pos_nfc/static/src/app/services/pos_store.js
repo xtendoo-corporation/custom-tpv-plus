@@ -4,13 +4,17 @@ import { PosStore } from "@point_of_sale/app/services/pos_store";
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
 import { NfcScanPopup } from "@tpv_plus_pos_nfc/app/components/nfc_scan_popup/nfc_scan_popup";
-import { MismatchedPartnerPopup } from "@tpv_plus_pos_nfc/app/components/mismatched_partner_popup/mismatched_partner_popup";
 import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { formatCurrency } from "@point_of_sale/app/models/utils/currency";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 
 patch(PosStore.prototype, {
+    setup() {
+        super.setup(...arguments);
+        this.tablePartnerMemory = {};
+    },
+
     /**
      * Open the NFC/Barcode scan wizard.
      * Returns the scanned value or null if cancelled.
@@ -22,105 +26,90 @@ patch(PosStore.prototype, {
             return null;
         }
 
-        await this._tpvNfcHandleCustomerWalletFlow(scannedValue);
-        return scannedValue;
-    },
-
-    async _tpvNfcHandleCustomerWalletFlow(barcode) {
         const order = this.getOrder();
         if (!order || order.isEmpty()) {
             this.notification.add(_t("No hay líneas en el pedido actual."), {
                 type: "warning",
             });
-            return;
+            return null;
         }
 
-        const partner = await this._tpvNfcGetPartnerByBarcode(barcode);
+        const partner = await this._tpvNfcGetPartnerByBarcode(scannedValue);
         if (!partner) {
             this.dialog.add(AlertDialog, {
                 title: _t("Cliente no encontrado"),
                 body: _t("No existe ningún cliente con ese código de barras."),
             });
-            return;
+            return null;
         }
 
-        const currentPartner = order.getPartner();
-        let confirmedPayload = true;
-        if (currentPartner && currentPartner.id !== partner.id) {
-            confirmedPayload = await makeAwaitable(this.dialog, MismatchedPartnerPopup, {
-                currentPartner: currentPartner,
-                scannedPartner: partner,
-            });
-            if (!confirmedPayload) {
-                return;
-            }
-        }
+        await this._tpvNfcHandleCustomerWalletFlow(partner);
+        return scannedValue;
+    },
 
-        // Always keep current partner if mismatch was confirmed with "keep"
-        const targetPartner = confirmedPayload === "keep" ? currentPartner : partner;
+    async _tpvNfcHandleCustomerWalletFlow(partner) {
+        const order = this.getOrder();
+        const originalPartner = order.getPartner();
         
-        const ewalletPrograms = this.models["loyalty.program"].filter(
-            (program) => program.program_type === "ewallet"
-        );
-        if (ewalletPrograms.length > 1) {
-            this.dialog.add(AlertDialog, {
-                title: _t("Configuración inválida"),
-                body: _t("Hay más de un programa eWallet activo en el POS. Deje solo uno configurado."),
-            });
-            return;
+        // 1. Automatically switch to the scanned partner
+        if (order.getPartner()?.id !== partner.id) {
+            console.log("[tpv_plus_pos_nfc] Switching partner to:", partner.name);
+            order.setPartner(partner);
         }
 
-        this._tpvNfcRemoveExistingEwalletRewardLines(order);
-        
-        const walletCard = this._tpvNfcGetPartnerEwalletCard(partner);
-        if (walletCard) {
-            order.uiState.couponPointChanges[walletCard.id] = {
-                coupon_id: walletCard.id,
-                program_id: walletCard.program_id.id,
-                points: walletCard.points,
-            };
-        }
+        // 2. Force Odoo to sync loyalty programs and coupons for the new partner
+        await this.orderUpdateLoyaltyPrograms();
 
-        await this.updateRewards?.();
-
-        const walletBalance = walletCard?.points || 0;
-        const orderTotal = Math.max(order.priceIncl, 0);
-        const formattedBalance = formatCurrency(walletBalance, order.currency);
-        const formattedTotal = formatCurrency(orderTotal, order.currency);
-
-        if (walletBalance >= orderTotal && walletCard) {
-            const applied = await this._tpvNfcApplyEwalletReward(walletCard);
-            if (!applied) {
-                return;
-            }
-
-            await this._tpvNfcValidateCurrentOrder(order);
-            return;
-        }
-
-        if (walletCard && walletBalance > 0) {
-            const applied = await this._tpvNfcApplyEwalletReward(walletCard);
-            if (!applied) {
-                return;
-            }
-            this.notification.add(
-                _t("Saldo aplicado del monedero: %s. Complete el importe restante en pagos.", formattedBalance),
-                {
-                    type: "warning",
-                }
-            );
-        } else {
+        // 3. Find the ewallet card
+        const walletCard = await this._tpvNfcGetPartnerEwalletCard(partner);
+        if (!walletCard || walletCard.points <= 0) {
+            const balance = walletCard ? formatCurrency(walletCard.points, order.currency) : "0.00";
             this.dialog.add(AlertDialog, {
                 title: _t("Saldo insuficiente"),
-                body: _t(
-                    "El cliente no dispone de saldo suficiente en el monedero. Saldo: %s · Total: %s",
-                    formattedBalance,
-                    formattedTotal
-                ),
+                body: _t("El monedero de %s no tiene saldo suficiente (Saldo: %s).", partner.name, balance),
             });
+            return;
         }
 
-        this.navigate("PaymentScreen", { orderUuid: order.uuid });
+        // 4. Apply the eWallet reward
+        this._tpvNfcRemoveExistingEwalletRewardLines(order);
+        const applied = await this._tpvNfcApplyEwalletReward(walletCard);
+        
+        if (!applied) {
+            console.error("[tpv_plus_pos_nfc] Failed to apply eWallet reward.");
+            return;
+        }
+
+        // 5. Finalize payment or navigate to payment screen
+        if (order.isPaid() || Math.abs(order.priceIncl) < 0.001) {
+            console.log("[tpv_plus_pos_nfc] Order fully paid via eWallet. Validating...");
+            await this._tpvNfcValidateCurrentOrder(order, originalPartner);
+        } else {
+            console.log("[tpv_plus_pos_nfc] Partial payment via eWallet. Navigating to Payment Screen.");
+            this.navigate("PaymentScreen", { orderUuid: order.uuid });
+        }
+    },
+
+    setPartner(partner) {
+        super.setPartner(partner);
+        const order = this.getOrder();
+        if (this.config.module_pos_restaurant && order?.table_id && partner) {
+            this.tablePartnerMemory[order.table_id.id] = partner;
+        }
+    },
+
+    addNewOrder(data = {}) {
+        console.log("[tpv_plus_pos_nfc] addNewOrder called with data:", data);
+        console.trace("[tpv_plus_pos_nfc] addNewOrder Stack Trace");
+        const order = super.addNewOrder(...arguments);
+        if (this.config.module_pos_restaurant && order?.table_id) {
+            const rememberedPartner = this.tablePartnerMemory[order.table_id.id];
+            if (rememberedPartner) {
+                console.log("[tpv_plus_pos_nfc] Restoring remembered partner for table:", rememberedPartner.name);
+                order.setPartner(rememberedPartner);
+            }
+        }
+        return order;
     },
 
     async _tpvNfcGetPartnerByBarcode(barcode) {
@@ -133,22 +122,20 @@ patch(PosStore.prototype, {
         return result.length ? result[0] : null;
     },
 
-    _tpvNfcGetPartnerEwalletCard(partner) {
-        const couponIds = this.partnerId2CouponIds?.[partner.id]
-            ? [...this.partnerId2CouponIds[partner.id]]
-            : [];
-
-        return (
-            couponIds
-                .map((couponId) => this.models["loyalty.card"].get(couponId))
-                .filter(
-                    (card) =>
-                        card &&
-                        card.program_id?.program_type === "ewallet" &&
-                        !card.isExpired()
-                )
-                .sort((a, b) => (b.points || 0) - (a.points || 0))[0] || null
+    async _tpvNfcGetPartnerEwalletCard(partner) {
+        const ewalletPrograms = this.models["loyalty.program"].filter(
+            (program) => program.program_type === "ewallet"
         );
+        
+        const cards = [];
+        for (const program of ewalletPrograms) {
+            const card = await this.fetchLoyaltyCard(program.id, partner.id);
+            if (card && !card.isExpired()) {
+                cards.push(card);
+            }
+        }
+
+        return cards.sort((a, b) => (b.points || 0) - (a.points || 0))[0] || null;
     },
 
     _tpvNfcRemoveExistingEwalletRewardLines(order) {
@@ -165,50 +152,85 @@ patch(PosStore.prototype, {
 
     async _tpvNfcApplyEwalletReward(walletCard) {
         const order = this.getOrder();
-        const rewardToApply = order
-            .getClaimableRewards(walletCard.id)
-            .find(({ reward }) => reward.program_id.program_type === "ewallet");
+        
+        // 1. Try to find the reward in Odoo's claimable rewards list
+        const claimableRewards = order.getClaimableRewards(walletCard.id);
+        const ewalletReward = claimableRewards.find(r => 
+            r.reward.program_id.program_type === 'ewallet' && 
+            r.reward.reward_type === 'discount'
+        );
 
-        if (!rewardToApply) {
+        if (ewalletReward) {
+            console.log("[tpv_plus_pos_nfc] Applying eWallet reward from claimable list:", ewalletReward.reward.id);
+            const result = order._applyReward(ewalletReward.reward, ewalletReward.coupon_id);
+            if (result === true) {
+                return true;
+            }
+        }
+
+        // 2. Fallback: Manual search in the program's rewards
+        const program = walletCard.program_id;
+        const reward = program.reward_ids.find(r => r.reward_type === "discount");
+
+        if (!reward) {
             this.dialog.add(AlertDialog, {
                 title: _t("Monedero no aplicable"),
-                body: _t("No se ha podido aplicar el monedero al pedido actual."),
+                body: _t("No se ha encontrado un premio de descuento en el programa de monedero."),
             });
             return false;
         }
 
-        const result = order._applyReward(rewardToApply.reward, rewardToApply.coupon_id, {});
+        // Register the card in couponPointChanges if Odoo hasn't done it yet
+        if (!order.uiState.couponPointChanges[walletCard.id]) {
+            order.uiState.couponPointChanges[walletCard.id] = {
+                points: walletCard.points,
+                program_id: program.id,
+                coupon_id: walletCard.id,
+            };
+        }
+
+        console.log("[tpv_plus_pos_nfc] Applying eWallet reward manually:", reward.id);
+        const result = order._applyReward(reward, walletCard.id);
 
         if (result !== true) {
             this.dialog.add(AlertDialog, {
-                title: _t("Error"),
-                body: result,
+                title: _t("Error al aplicar monedero"),
+                body: typeof result === 'string' ? result : _t("Error desconocido"),
             });
             return false;
         }
 
-        await this.updateRewards?.();
+        // Final precision adjustment for small floating point errors (Standard check)
+        const total = order.priceIncl;
+        if (Math.abs(total) < 0.0001 && total !== 0) {
+            const rewardLines = order.getOrderlines().filter(line => line.is_reward_line);
+            const lastRewardLine = rewardLines[rewardLines.length - 1];
+            if (lastRewardLine) {
+                lastRewardLine.price_unit = lastRewardLine.price_unit - total;
+            }
+        }
+        
         return true;
     },
 
-    async _tpvNfcValidateCurrentOrder(order) {
-        const isRestaurant = this.config.module_pos_restaurant;
-        const tableId = order.table_id;
-        const partner = order.getPartner();
+    async _tpvNfcValidateCurrentOrder(order, originalPartner = null) {
+        console.log("[tpv_plus_pos_nfc] Validating order with standard validateOrder(true). Total Incl:", order.priceIncl);
 
         const validation = new OrderPaymentValidation({
             pos: this,
             orderUuid: order.uuid,
         });
-        const isValidated = await validation.validateOrder(false);
-        if (isValidated && isRestaurant) {
-            order.setScreenData({ name: "" });
 
-            if (tableId) {
-                const newOrder = this.addNewOrder({ table_id: tableId.id || tableId });
-                if (partner) {
-                    newOrder.setPartner(partner);
-                }
+        // validateOrder(true) handles the full Odoo sequence:
+        // finalizeValidation -> shouldHideValidationBehindFeedbackScreen -> navigate to ReceiptScreen
+        const isValidated = await validation.validateOrder(true);
+
+        if (isValidated) {
+            // Restore the original partner to the memory for this table
+            // so the NEXT order created for this table (manually or via New Order) gets it.
+            if (this.config.module_pos_restaurant && order.table_id && originalPartner) {
+                console.log("[tpv_plus_pos_nfc] Saving original partner to memory for restoration:", originalPartner.name);
+                this.tablePartnerMemory[order.table_id.id] = originalPartner;
             }
         }
     },
