@@ -218,6 +218,9 @@ patch(PosStore.prototype, {
     async addLineToCurrentOrder(vals, options = {}, configure = true) {
         const { product, productTemplate } = this._tpvPurseResolveProductAndTemplate(vals);
         const order = this.getOrder();
+        const presetVariablePrice = Number(vals.price_unit);
+        const shouldReusePresetVariablePrice =
+            Boolean(options?.tpvPurseSkipVariablePricePopup) && presetVariablePrice > 0;
 
         this._tpvPurseDebug("addLineToCurrentOrder called", {
             configure,
@@ -226,6 +229,7 @@ patch(PosStore.prototype, {
             productTemplateName: productTemplate?.display_name || productTemplate?.name,
             partnerId: order?.partner_id?.id || order?.getPartner?.()?.id || null,
             hasVariablePrice: Boolean(productTemplate?.pos_variable_price),
+            shouldReusePresetVariablePrice,
             options,
             vals,
         });
@@ -246,7 +250,9 @@ patch(PosStore.prototype, {
         const defaultPrice =
             vals.price_unit ?? product?.lst_price ?? productTemplate?.list_price ?? 0;
 
-        const variablePrice = await this._tpvPurseAskVariablePrice(productTemplate, defaultPrice);
+        const variablePrice = shouldReusePresetVariablePrice
+            ? presetVariablePrice
+            : await this._tpvPurseAskVariablePrice(productTemplate, defaultPrice);
         if (variablePrice === null) {
             this._tpvPurseDebug("Variable price popup cancelled", {
                 productId: product?.id || null,
@@ -256,7 +262,7 @@ patch(PosStore.prototype, {
         }
 
         let computedPriceUnit = variablePrice;
-        if (product?.id && order) {
+        if (!shouldReusePresetVariablePrice && product?.id && order) {
             try {
                 computedPriceUnit = await this.data.call(
                     "product.product",

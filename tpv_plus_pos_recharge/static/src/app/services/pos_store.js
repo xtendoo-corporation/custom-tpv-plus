@@ -70,7 +70,15 @@ patch(PosStore.prototype, {
                 discount: 0,
                 qty: 1,
             },
-            ewalletProgram ? { eWalletGiftCardProgram: ewalletProgram, tpvPurseProgram: ewalletProgram } : {}
+            {
+                ...(ewalletProgram
+                    ? {
+                          eWalletGiftCardProgram: ewalletProgram,
+                          tpvPurseProgram: ewalletProgram,
+                      }
+                    : {}),
+                tpvPurseSkipVariablePricePopup: true,
+            }
         );
 
         console.log("[tpv_plus_pos_recharge] Line added to order:", line ? line.uuid : "FAILED");
