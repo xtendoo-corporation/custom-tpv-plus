@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template
+            id="report_invoice_document_hide_date_identifier"
+            inherit_id="account.report_invoice_document"
+            primary="True"
+            priority="90"
+        >
+            <xpath expr="//t[@t-set='layout_document_title']/span[@t-field='o.name']" position="replace"/>
+            <xpath expr="//div[@id='informations']/div[@name='invoice_date']" position="replace"/>
+            <xpath expr="//div[@id='informations']/div[@name='due_date']" position="replace"/>
+            <xpath expr="//div[@id='informations']" position="attributes">
+                <attribute name="t-if">o.delivery_date or o.invoice_origin or o.partner_id.ref or o.ref or o.invoice_incoterm_id</attribute>
+            </xpath>
+        </template>
+
+        <template id="report_invoice_hide_date_identifier">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-set="lang" t-value="o.partner_id.lang"/>
+                    <t t-call="tpv_plus_hide_files.report_invoice_document_hide_date_identifier" t-lang="lang"/>
+                </t>
+            </t>
+        </template>
+
+        <record id="action_report_invoice_hide_date_identifier" model="ir.actions.report">
+            <field name="name">Factura sin fecha e identificador</field>
+            <field name="model">account.move</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">tpv_plus_hide_files.report_invoice_hide_date_identifier</field>
+            <field name="report_file">tpv_plus_hide_files.report_invoice_hide_date_identifier</field>
+            <field name="binding_model_id" ref="account.model_account_move"/>
+            <field name="binding_type">report</field>
+        </record>
+    </data>
+</odoo>
+
