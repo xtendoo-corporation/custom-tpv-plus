@@ -7,7 +7,9 @@
             primary="True"
             priority="90"
         >
-            <xpath expr="//t[@t-set='layout_document_title']/span[@t-field='o.name']" position="replace"/>
+            <xpath expr="//t[@t-set='layout_document_title']" position="replace">
+                <t t-set="layout_document_title"/>
+            </xpath>
             <xpath expr="//div[@id='informations']/div[@name='invoice_date']" position="replace"/>
             <xpath expr="//div[@id='informations']/div[@name='due_date']" position="replace"/>
             <xpath expr="//div[@id='informations']" position="attributes">
