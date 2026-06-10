@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Add NFC button to Navbar (Top Bar) - Always Visible -->
+    <t t-name="tpv_plus_pos_nfc.Navbar" t-inherit="point_of_sale.Navbar" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('status-buttons')]" position="inside">
+            <button class="btn btn-light btn-lg lh-lg ms-1"
+                    t-on-click="() => pos.openNfcScanWizard()"
+                    title="Escanear NFC/Código de barras">
+                <i class="fa fa-fw fa-lg fa-wifi" />
+            </button>
+        </xpath>
+    </t>
+
+    <!-- Also add it to ActionPad (Bottom Bar) when on mobile for maximum accessibility -->
+    <t t-name="tpv_plus_pos_nfc.ProductScreen" t-inherit="point_of_sale.ProductScreen" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('switchpane')]" position="inside">
+            <button class="btn btn-secondary btn-lg btn-switchpane flex-grow-1"
+                    t-on-click="() => pos.openNfcScanWizard()">
+                <i class="fa fa-wifi fa-fw d-block mb-1" />
+                <span>NFC/Scanner</span>
+            </button>
+        </xpath>
+    </t>
+
+</templates>
+
