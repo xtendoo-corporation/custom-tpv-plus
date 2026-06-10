@@ -5,7 +5,7 @@ import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
 import { NfcScanPopup } from "@tpv_plus_pos_nfc/app/components/nfc_scan_popup/nfc_scan_popup";
 import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
-import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { AlertDialog, ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { formatCurrency } from "@point_of_sale/app/models/utils/currency";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 
@@ -27,30 +27,37 @@ patch(PosStore.prototype, {
 
     _tpvNfcShouldHandleBarcodeDirectly() {
         const order = this.getOrder();
-        return Boolean(
-            this.config.module_pos_restaurant && order?.table_id && order.getPartner?.()
-        );
+        return Boolean(order);
     },
 
-    async _tpvNfcProcessScannedValue(scannedValue) {
+    async _tpvNfcProcessScannedValue(scannedValue, isDirect = false) {
         const normalizedValue = this._tpvNfcNormalizeScannedValue(scannedValue);
         if (!normalizedValue) {
             return { handled: false, success: false, scannedValue: null };
         }
 
-        const order = this.getOrder();
-        if (!order || order.isEmpty()) {
-            this.notification.add(_t("No hay líneas en el pedido actual."), {
-                type: "warning",
+        const partner = await this._tpvNfcGetPartnerByBarcode(normalizedValue);
+        if (!partner) {
+            if (isDirect) {
+                // Si es escaneo directo y no es cliente, no hacemos nada (será un producto)
+                return { handled: false, success: false, scannedValue: normalizedValue };
+            }
+            this.dialog.add(AlertDialog, {
+                title: _t("Cliente no encontrado"),
+                body: _t("No existe ningún cliente con ese código de barras."),
             });
             return { handled: true, success: false, scannedValue: normalizedValue };
         }
 
-        const partner = await this._tpvNfcGetPartnerByBarcode(normalizedValue);
-        if (!partner) {
-            this.dialog.add(AlertDialog, {
-                title: _t("Cliente no encontrado"),
-                body: _t("No existe ningún cliente con ese código de barras."),
+        const order = this.getOrder();
+        if (!order || order.isEmpty()) {
+            if (isDirect) {
+                // Si el pedido está vacío, solo asignamos el cliente
+                order.setPartner(partner);
+                return { handled: true, success: true, scannedValue: normalizedValue };
+            }
+            this.notification.add(_t("No hay líneas en el pedido actual."), {
+                type: "warning",
             });
             return { handled: true, success: false, scannedValue: normalizedValue };
         }
@@ -90,17 +97,33 @@ patch(PosStore.prototype, {
         // 3. Find the ewallet card
         const walletCard = await this._tpvNfcGetPartnerEwalletCard(partner);
         if (!walletCard || walletCard.points <= 0) {
-            const balance = walletCard ? formatCurrency(walletCard.points, order.currency) : "0.00";
-            this.dialog.add(AlertDialog, {
-                title: _t("Saldo insuficiente"),
-                body: _t("El monedero de %s no tiene saldo suficiente (Saldo: %s).", partner.name, balance),
-            });
-            return false;
+            // Option A: Just assign partner and stay in product screen
+            return true;
         }
+
+        // 3b. Ask for confirmation before paying (Reverted to simple Yes/No without "actions")
+        const walletBalance = walletCard.points.toFixed(2);
+        const orderTotal = order.priceIncl.toFixed(2);
+        const currency = order.currency.symbol;
+
+        const confirmed = await makeAwaitable(this.dialog, ConfirmationDialog, {
+            title: _t("Pago con Monedero"),
+            body: _t("¿Desea pagar el pedido con el monedero de %s? (Saldo: %s%s, Total: %s%s)",
+                partner.name, walletBalance, currency, orderTotal, currency),
+            confirmLabel: _t("Pagar"),
+            cancelLabel: _t("Cancelar"),
+        });
+
+        if (!confirmed) {
+            return true; // We keep the partner assigned but don't pay
+        }
+
+        // Pay as much as possible (up to total or points)
+        const amountToUse = Math.min(walletCard.points, order.priceIncl);
 
         // 4. Apply the eWallet reward
         this._tpvNfcRemoveExistingEwalletRewardLines(order);
-        const applied = await this._tpvNfcApplyEwalletReward(walletCard);
+        const applied = await this._tpvNfcApplyEwalletReward(walletCard, amountToUse);
 
         if (!applied) {
             console.error("[tpv_plus_pos_nfc] Failed to apply eWallet reward.");
@@ -179,7 +202,7 @@ patch(PosStore.prototype, {
         }
     },
 
-    async _tpvNfcApplyEwalletReward(walletCard) {
+    async _tpvNfcApplyEwalletReward(walletCard, amountToUse = null) {
         const order = this.getOrder();
 
         // 1. Try to find the reward in Odoo's claimable rewards list
@@ -191,8 +214,13 @@ patch(PosStore.prototype, {
 
         if (ewalletReward) {
             console.log("[tpv_plus_pos_nfc] Applying eWallet reward from claimable list:", ewalletReward.reward.id);
+            // If amountToUse is provided, Odoo's _applyReward might need adjustment or we trust it handles partials
+            // In ewallet, _applyReward usually applies as much as possible up to order total or points
             const result = order._applyReward(ewalletReward.reward, ewalletReward.coupon_id);
             if (result === true) {
+                if (amountToUse !== null) {
+                    this._tpvNfcAdjustRewardLineAmount(order, amountToUse);
+                }
                 return true;
             }
         }
@@ -229,6 +257,10 @@ patch(PosStore.prototype, {
             return false;
         }
 
+        if (amountToUse !== null) {
+            this._tpvNfcAdjustRewardLineAmount(order, amountToUse);
+        }
+
         // Final precision adjustment for small floating point errors (Standard check)
         const total = order.priceIncl;
         if (Math.abs(total) < 0.0001 && total !== 0) {
@@ -240,6 +272,19 @@ patch(PosStore.prototype, {
         }
 
         return true;
+    },
+
+    _tpvNfcAdjustRewardLineAmount(order, amount) {
+        const rewardLines = order.getOrderlines().filter(
+            (line) =>
+                line.is_reward_line &&
+                line.coupon_id?.program_id?.program_type === "ewallet"
+        );
+        const lastRewardLine = rewardLines[rewardLines.length - 1];
+        if (lastRewardLine) {
+            // Reward lines are usually negative
+            lastRewardLine.price_unit = -Math.abs(amount);
+        }
     },
 
     async _tpvNfcValidateCurrentOrder(order, originalPartner = null) {
@@ -264,4 +309,3 @@ patch(PosStore.prototype, {
         }
     },
 });
-

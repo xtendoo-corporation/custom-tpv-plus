@@ -6,9 +6,11 @@ import { patch } from "@web/core/utils/patch";
 patch(ProductScreen.prototype, {
     async _barcodeProductAction(code) {
         if (this.pos._tpvNfcShouldHandleBarcodeDirectly?.()) {
-            const result = await this.pos._tpvNfcProcessScannedValue(code);
+            const result = await this.pos._tpvNfcProcessScannedValue(code, true);
             if (result?.handled) {
-                this.sound.play(result.success ? "beep" : "scan-error");
+                if (result.success) {
+                    this.sound.play("beep");
+                }
                 this.numberBuffer.reset();
                 return;
             }
@@ -16,5 +18,12 @@ patch(ProductScreen.prototype, {
 
         await super._barcodeProductAction(code);
     },
-});
 
+    async _barcodePartnerAction(code) {
+        await super._barcodePartnerAction(code);
+        const partner = this.pos.models["res.partner"].getBy("barcode", code);
+        if (partner && this.pos._tpvNfcShouldHandleBarcodeDirectly?.()) {
+            await this.pos._tpvNfcHandleCustomerWalletFlow(partner);
+        }
+    },
+});
