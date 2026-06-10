@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="tpv_plus_pos_nfc.WalletChoicePopup">
+        <Dialog title="props.title || 'Pago con Monedero'" size="'md'">
+            <div class="p-3">
+                <p class="text-prewrap mb-0" t-out="props.body"/>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-secondary py-3" t-on-click="onCancel">Cancelar</button>
+                <div class="flex-grow-1"/>
+                <button class="btn btn-secondary py-3 px-4 me-2" t-on-click="onPartial">Pagar Cantidad...</button>
+                <button class="btn btn-primary py-3 px-4" t-on-click="onTotal">Pagar Total</button>
+            </t>
+        </Dialog>
+    </t>
+</templates>
+

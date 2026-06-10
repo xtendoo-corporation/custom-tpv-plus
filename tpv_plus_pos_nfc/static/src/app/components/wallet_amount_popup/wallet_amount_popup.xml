@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="tpv_plus_pos_nfc.WalletAmountPopup">
+        <Dialog title="props.title || 'Pago con Monedero'" size="'md'">
+            <div class="wallet-amount-popup-content p-3">
+                <div class="mb-3 text-center">
+                    <h4 class="mb-2"><t t-esc="props.partnerName"/></h4>
+                    <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                        <span>Saldo disponible:</span>
+                        <strong class="text-success"><t t-esc="formattedBalance"/><t t-esc="props.currencySymbol"/></strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Total pedido:</span>
+                        <strong><t t-esc="formattedTotal"/><t t-esc="props.currencySymbol"/></strong>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="wallet_amount" class="form-label font-weight-bold">Cantidad a usar:</label>
+                    <div class="input-group input-group-lg">
+                        <input type="number"
+                               step="0.01"
+                               class="form-control text-center"
+                               id="wallet_amount"
+                               t-model="state.amount"
+                               t-ref="amountInput"
+                               t-on-keydown="(ev) => ev.key === 'Enter' &amp;&amp; onConfirm()"/>
+                        <span class="input-group-text"><t t-esc="props.currencySymbol"/></span>
+                    </div>
+                    <t t-if="state.error">
+                        <div class="text-danger mt-2 small"><t t-esc="state.error"/></div>
+                    </t>
+                </div>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-secondary py-3 px-5" t-on-click="onCancel">Cancelar</button>
+                <button class="btn btn-primary py-3 px-5" t-on-click="onConfirm">Confirmar Pago</button>
+            </t>
+        </Dialog>
+    </t>
+</templates>
+

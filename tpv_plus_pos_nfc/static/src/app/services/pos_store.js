@@ -4,9 +4,10 @@ import { PosStore } from "@point_of_sale/app/services/pos_store";
 import { patch } from "@web/core/utils/patch";
 import { _t } from "@web/core/l10n/translation";
 import { NfcScanPopup } from "@tpv_plus_pos_nfc/app/components/nfc_scan_popup/nfc_scan_popup";
+import { WalletAmountPopup } from "@tpv_plus_pos_nfc/app/components/wallet_amount_popup/wallet_amount_popup";
+import { WalletChoicePopup } from "@tpv_plus_pos_nfc/app/components/wallet_choice_popup/wallet_choice_popup";
 import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { AlertDialog, ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
-import { formatCurrency } from "@point_of_sale/app/models/utils/currency";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 
 patch(PosStore.prototype, {
@@ -101,25 +102,35 @@ patch(PosStore.prototype, {
             return true;
         }
 
-        // 3b. Ask for confirmation before paying (Reverted to simple Yes/No without "actions")
+        // 3b. Ask for confirmation before paying with multiple choices
         const walletBalance = walletCard.points.toFixed(2);
         const orderTotal = order.priceIncl.toFixed(2);
         const currency = order.currency.symbol;
 
-        const confirmed = await makeAwaitable(this.dialog, ConfirmationDialog, {
+        const payload = await makeAwaitable(this.dialog, WalletChoicePopup, {
             title: _t("Pago con Monedero"),
             body: _t("¿Desea pagar el pedido con el monedero de %s? (Saldo: %s%s, Total: %s%s)",
                 partner.name, walletBalance, currency, orderTotal, currency),
-            confirmLabel: _t("Pagar"),
-            cancelLabel: _t("Cancelar"),
         });
 
-        if (!confirmed) {
-            return true; // We keep the partner assigned but don't pay
+        if (!payload || payload.action === 'cancel') {
+            return true;
         }
 
-        // Pay as much as possible (up to total or points)
-        const amountToUse = Math.min(walletCard.points, order.priceIncl);
+        let amountToUse = null;
+        if (payload.action === 'partial') {
+            amountToUse = await makeAwaitable(this.dialog, WalletAmountPopup, {
+                title: _t("Pagar cantidad específica"),
+                partnerName: partner.name,
+                walletBalance: walletCard.points,
+                orderTotal: order.priceIncl,
+                currencySymbol: order.currency.symbol,
+            });
+            if (!amountToUse) return true;
+        } else {
+            // Pay as much as possible (up to total or points)
+            amountToUse = Math.min(walletCard.points, order.priceIncl);
+        }
 
         // 4. Apply the eWallet reward
         this._tpvNfcRemoveExistingEwalletRewardLines(order);
