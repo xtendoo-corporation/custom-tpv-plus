@@ -21,7 +21,7 @@ patch(ProductScreen.prototype, {
 
     async _barcodePartnerAction(code) {
         await super._barcodePartnerAction(code);
-        const partner = this.pos.models["res.partner"].getBy("barcode", code);
+        const partner = this.pos.models["res.partner"].getBy("barcode", code.code ?? code);
         if (partner && this.pos._tpvNfcShouldHandleBarcodeDirectly?.()) {
             await this.pos._tpvNfcHandleCustomerWalletFlow(partner);
         }

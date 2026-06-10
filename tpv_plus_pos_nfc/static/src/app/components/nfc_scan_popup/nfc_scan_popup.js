@@ -65,14 +65,8 @@ export class NfcScanPopup extends Component {
             this.state.statusMessage = _t("NFC activo · Esperando lectura…");
 
             this._nfcReader.addEventListener("reading", (event) => {
-                const serialNumber = event.serialNumber || "";
-                // The serial number of the NFC tag is the RFID UID
-                if (serialNumber) {
-                    // Clean up serial number (remove colons, etc.)
-                    const cleanId = serialNumber.replace(/:/g, "").toUpperCase();
-                    this._onValueScanned(cleanId, "nfc");
-                } else if (event.message && event.message.records) {
-                    // Try to read NDEF text records
+                // First: try to read NDEF text records (contains the barcode)
+                if (event.message && event.message.records) {
                     for (const record of event.message.records) {
                         if (record.recordType === "text") {
                             const textDecoder = new TextDecoder(record.encoding || "utf-8");
@@ -83,10 +77,12 @@ export class NfcScanPopup extends Component {
                             }
                         }
                     }
-                    // Fallback: use serial number anyway
-                    if (serialNumber) {
-                        this._onValueScanned(serialNumber.replace(/:/g, "").toUpperCase(), "nfc");
-                    }
+                }
+                // Fallback: use serial number (UID) if no text records found
+                const serialNumber = event.serialNumber || "";
+                if (serialNumber) {
+                    const cleanId = serialNumber.replace(/:/g, "").toUpperCase();
+                    this._onValueScanned(cleanId, "nfc");
                 }
             });
 
