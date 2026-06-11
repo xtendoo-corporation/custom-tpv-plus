@@ -7,7 +7,7 @@ import { NfcScanPopup } from "@tpv_plus_pos_nfc/app/components/nfc_scan_popup/nf
 import { WalletAmountPopup } from "@tpv_plus_pos_nfc/app/components/wallet_amount_popup/wallet_amount_popup";
 import { WalletChoicePopup } from "@tpv_plus_pos_nfc/app/components/wallet_choice_popup/wallet_choice_popup";
 import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
-import { AlertDialog, ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
+import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
 
 patch(PosStore.prototype, {
@@ -52,9 +52,15 @@ patch(PosStore.prototype, {
 
         const order = this.getOrder();
         if (!order || order.isEmpty()) {
-            if (isDirect) {
-                // Si el pedido está vacío, solo asignamos el cliente
+            if (isDirect && order) {
+                // Si el pedido está vacío (pero existe), solo asignamos el cliente
                 order.setPartner(partner);
+                return { handled: true, success: true, scannedValue: normalizedValue };
+            }
+            if (isDirect && !order) {
+                // Si no hay pedido, podríamos crearlo o avisar
+                await this.addNewOrder();
+                this.getOrder().setPartner(partner);
                 return { handled: true, success: true, scannedValue: normalizedValue };
             }
             this.notification.add(_t("No hay líneas en el pedido actual."), {
@@ -162,8 +168,6 @@ patch(PosStore.prototype, {
     },
 
     addNewOrder(data = {}) {
-        console.log("[tpv_plus_pos_nfc] addNewOrder called with data:", data);
-        console.trace("[tpv_plus_pos_nfc] addNewOrder Stack Trace");
         const order = super.addNewOrder(...arguments);
         if (this.config.module_pos_restaurant && order?.table_id) {
             const rememberedPartner = this.tablePartnerMemory[order.table_id.id];

@@ -46,17 +46,17 @@ class MainActivity : ComponentActivity() {
         private val NFC_POLYFILL = """
             (function(){
                 if(window.__nfc_installed) return;
-                
+
                 // Polyfill para AbortController (evita fallos en PDAs antiguas)
                 if(typeof AbortController === 'undefined') {
                     window.AbortController = function() {
-                        this.signal = { 
+                        this.signal = {
                             aborted: false,
                             addEventListener: function(t, c) { if(!this._l) this._l={}; this._l[t]=c; },
                             removeEventListener: function(t) { if(this._l) delete this._l[t]; }
                         };
-                        this.abort = function() { 
-                            this.signal.aborted = true; 
+                        this.abort = function() {
+                            this.signal.aborted = true;
                             if(this.signal._l && this.signal._l.abort) this.signal._l.abort();
                         };
                     };
@@ -70,33 +70,33 @@ class MainActivity : ComponentActivity() {
                 var _setup = function(w) {
                     try {
                         if(!w || w.NDEFReader) return;
-                        
+
                         _log("Instalando Web NFC");
-                        
+
                         var Reader = function() {
                             this._listeners = {};
                         };
-                        
+
                         Reader.prototype.addEventListener = function(t, c) {
                             this._listeners[t] = c;
                         };
-                        
+
                         Reader.prototype.removeEventListener = function(t) {
                             delete this._listeners[t];
                         };
-                        
+
                         Reader.prototype.scan = function() {
                             _log("Scan solicitado");
                             w.__activeReader = this;
                             if(window.Android && window.Android.showToast) window.Android.showToast("NFC: Sensor activado");
                             return Promise.resolve();
                         };
-                        
+
                         Reader.prototype.makeReadOnly = function() { return Promise.reject(); };
                         Reader.prototype.write = function() { return Promise.reject(); };
-                        
+
                         w.NDEFReader = Reader;
-                        
+
                         w.__nfcTriggerRead = function(id) {
                             var r = w.__activeReader;
                             if(r && r._listeners && r._listeners.reading) {
@@ -313,7 +313,7 @@ class MainActivity : ComponentActivity() {
                 tag?.let {
                     var tagContent = ""
                     val ndef = Ndef.get(it)
-                    
+
                     try {
                         ndef?.let { n ->
                             n.connect()
@@ -337,15 +337,15 @@ class MainActivity : ComponentActivity() {
                     if (tagContent.isEmpty()) {
                         tagContent = it.id.joinToString("") { byte -> "%02x".format(byte) }
                     }
-                    
+
                     // Toast invisible: quitamos el .show() y usamos Log
                     android.util.Log.i("NFC_Scan", "Tag capturado (invisible): $tagContent")
-                    
+
                     val script = """
                         (function(){
                             var scannedValue = '${tagContent.replace("'", "\\'")}';
                             var _t = function(w) {
-                                try { 
+                                try {
                                     if(w.__nfcTriggerRead && w.__nfcTriggerRead(scannedValue)) return true;
                                 } catch(e){}
                                 return false;
@@ -360,7 +360,7 @@ class MainActivity : ComponentActivity() {
                             if(!found && typeof handleNfcScan === 'function') handleNfcScan(scannedValue);
                         })();
                     """.trimIndent()
-                    
+
                     webView?.evaluateJavascript(script, null)
                 }
             }
