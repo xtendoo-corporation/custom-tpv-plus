@@ -22,6 +22,11 @@ export class NfcScanPopup extends Component {
             barcodeBuffer: "",
         });
 
+        // Forzar detección en entornos con polyfill (como la App Android)
+        if ("NDEFReader" in window) {
+            this.state.nfcSupported = true;
+        }
+
         this.inputRef = useRef("valueInput");
         this._nfcReader = null;
         this._nfcAbortController = null;
@@ -34,8 +39,17 @@ export class NfcScanPopup extends Component {
             // Check Web NFC support
             if ("NDEFReader" in window) {
                 this.state.nfcSupported = true;
+                this.state.nfcActive = true; // Forzamos activo si existe la clase
                 this._startNfc();
             }
+
+            // Escuchar evento personalizado desde el WebView si el polyfill lo lanza
+            this._onNfcReady = () => {
+                this.state.nfcSupported = true;
+                this.state.nfcActive = true;
+                this._startNfc();
+            };
+            window.addEventListener('nfc-ready', this._onNfcReady);
 
             // Listen for barcode scanner keystrokes globally
             this._onKeyDown = this._handleKeyDown.bind(this);
@@ -44,6 +58,7 @@ export class NfcScanPopup extends Component {
 
         onWillUnmount(() => {
             this._stopNfc();
+            window.removeEventListener('nfc-ready', this._onNfcReady);
             if (this._onKeyDown) {
                 document.removeEventListener("keydown", this._onKeyDown, true);
             }
@@ -57,11 +72,17 @@ export class NfcScanPopup extends Component {
 
     async _startNfc() {
         try {
+            if (!("NDEFReader" in window)) {
+                throw new Error("NDEFReader not in window");
+            }
             this._nfcAbortController = new AbortController();
             this._nfcReader = new NDEFReader();
+
+            // Intentamos el escaneo
             await this._nfcReader.scan({ signal: this._nfcAbortController.signal });
 
             this.state.nfcActive = true;
+            this.state.nfcSupported = true;
             this.state.statusMessage = _t("NFC activo · Esperando lectura…");
 
             this._nfcReader.addEventListener("reading", (event) => {
@@ -211,4 +232,3 @@ export class NfcScanPopup extends Component {
         this.props.close();
     }
 }
-
