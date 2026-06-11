@@ -43,6 +43,15 @@ export class NfcScanPopup extends Component {
                 this._startNfc();
             }
 
+            // PUENTE NATIVO: Escuchar lectura directa desde la App Android
+            window.handleNfcScan = (id) => {
+                if (id) {
+                    this.state.nfcSupported = true;
+                    this.state.nfcActive = true;
+                    this._onValueScanned(id, "nfc");
+                }
+            };
+
             // Escuchar evento personalizado desde el WebView si el polyfill lo lanza
             this._onNfcReady = () => {
                 this.state.nfcSupported = true;
