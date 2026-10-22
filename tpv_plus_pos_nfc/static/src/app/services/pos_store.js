@@ -170,14 +170,10 @@ patch(PosStore.prototype, {
         }
 
         // 3b. Ask for confirmation before paying with multiple choices
-        const walletBalance = walletCard.points.toFixed(2);
-        const orderTotal = order.priceIncl.toFixed(2);
-        const currency = order.currency.symbol;
-
         const payload = await makeAwaitable(this.dialog, WalletChoicePopup, {
-            title: _t("Pago con Monedero"),
-            body: _t("¿Desea pagar el pedido con el monedero de %s? (Saldo: %s%s, Total: %s%s)",
-                partner.name, walletBalance, currency, orderTotal, currency),
+            partnerName: partner.name,
+            walletBalance: walletCard.points,
+            orderTotal: order.priceIncl,
         });
 
         if (!payload || payload.action === 'cancel') {

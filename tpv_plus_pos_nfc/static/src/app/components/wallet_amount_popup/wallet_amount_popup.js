@@ -33,6 +33,19 @@ export class WalletAmountPopup extends Component {
         });
     }
 
+    get maxAmount() {
+        return Math.max(0, Math.min(this.props.walletBalance, this.props.orderTotal));
+    }
+
+    get shortcuts() {
+        return [2, 5].filter((value) => value < this.maxAmount - 0.004);
+    }
+
+    setAmount(value) {
+        this.state.amount = Number(value).toFixed(2);
+        this.state.error = "";
+    }
+
     get formattedBalance() {
         return this.props.walletBalance.toFixed(2);
     }

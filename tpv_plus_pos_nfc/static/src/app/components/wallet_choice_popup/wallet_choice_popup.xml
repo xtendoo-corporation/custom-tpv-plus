@@ -1,17 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
     <t t-name="tpv_plus_pos_nfc.WalletChoicePopup">
-        <Dialog title="props.title || 'Pago con Monedero'" size="'md'">
-            <div class="p-3">
-                <p class="text-prewrap mb-0" t-out="props.body"/>
+        <Dialog title="props.title || 'Pago con monedero'" size="'md'" contentClass="'wallet-popup'">
+            <div class="wallet-popup-body">
+                <div class="wallet-customer">
+                    <i class="fa fa-user-circle wallet-customer-icon"/>
+                    <div class="wallet-customer-info">
+                        <div class="wallet-customer-name" t-out="props.partnerName"/>
+                        <div class="wallet-customer-balance">Saldo: <t t-out="formatMoney(props.walletBalance)"/></div>
+                    </div>
+                </div>
+
+                <div class="wallet-summary">
+                    <div class="wallet-row">
+                        <span>Total del pedido</span>
+                        <strong t-out="formatMoney(props.orderTotal)"/>
+                    </div>
+                    <div class="wallet-row">
+                        <span>Saldo monedero</span>
+                        <strong t-out="formatMoney(props.walletBalance)"/>
+                    </div>
+                    <hr class="wallet-sep"/>
+                    <div class="wallet-pay">
+                        <span>Pagas con monedero</span>
+                        <strong class="wallet-pay-amount" t-out="formatMoney(payAmount)"/>
+                    </div>
+                    <div t-if="isInsufficient" class="wallet-warning">
+                        <i class="fa fa-exclamation-triangle me-1"/>
+                        Quedan <t t-out="formatMoney(remainingToCharge)"/> por cobrar con otro método
+                    </div>
+                    <div t-else="" class="wallet-row wallet-left">
+                        <span>Te queda en monedero</span>
+                        <strong t-out="formatMoney(balanceAfter)"/>
+                    </div>
+                </div>
             </div>
             <t t-set-slot="footer">
-                <button class="btn btn-secondary py-3" t-on-click="onCancel">Cancelar</button>
-                <div class="flex-grow-1"/>
-                <button class="btn btn-secondary py-3 px-4 me-2" t-on-click="onPartial">Pagar Cantidad...</button>
-                <button class="btn btn-primary py-3 px-4" t-on-click="onTotal">Pagar Total</button>
+                <div class="wallet-actions">
+                    <button class="btn btn-primary wallet-btn" t-on-click="onTotal">
+                        <t t-if="isInsufficient">Usar monedero (<t t-out="formatMoney(payAmount)"/>)</t>
+                        <t t-else="">Pagar total <t t-out="formatMoney(payAmount)"/></t>
+                    </button>
+                    <button class="btn btn-secondary wallet-btn" t-on-click="onPartial">Pagar otra cantidad…</button>
+                    <button class="btn btn-link wallet-cancel" t-on-click="onCancel">Cancelar</button>
+                </div>
             </t>
         </Dialog>
     </t>
 </templates>
-
