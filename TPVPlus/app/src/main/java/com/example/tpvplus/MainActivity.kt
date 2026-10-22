@@ -19,6 +19,9 @@ import android.webkit.WebViewClient
 import android.webkit.CookieManager
 import android.widget.FrameLayout
 import android.widget.Toast
+import android.widget.EditText
+import android.app.AlertDialog
+import android.net.Uri
 import android.webkit.JavascriptInterface
 import android.content.Context
 import androidx.activity.ComponentActivity
@@ -143,14 +146,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Habilitar depuración remota de WebView si el dispositivo está en modo depuración
-        WebView.setWebContentsDebuggingEnabled(true)
+        // Depuración remota de WebView solo en builds de depuración
+        WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
 
         val wv = WebView(this).apply {
-            // Limpiar caché al inicio para asegurar que se descarguen todos los JS frescos
-            clearCache(true)
+            // Solo en depuración: forzar descarga de JS frescos en cada arranque
+            if (BuildConfig.DEBUG) clearCache(true)
 
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -168,9 +171,9 @@ class MainActivity : ComponentActivity() {
             settings.setSupportZoom(true)
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
-            settings.allowFileAccess = true
-            settings.allowContentAccess = true
-            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            settings.allowFileAccess = false
+            settings.allowContentAccess = false
+            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
             settings.databaseEnabled = true
             settings.setGeolocationEnabled(true)
             settings.mediaPlaybackRequiresUserGesture = false
@@ -184,6 +187,21 @@ class MainActivity : ComponentActivity() {
             addJavascriptInterface(WebAppInterface(this@MainActivity), "Android")
 
             webViewClient = object : WebViewClient() {
+                // Solo se navega dentro del dominio del TPV; el resto se abre fuera de la app
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?,
+                    request: android.webkit.WebResourceRequest?
+                ): Boolean {
+                    val uri = request?.url ?: return false
+                    if (isTpvHost(uri.host)) return false
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    } catch (e: Exception) {
+                        android.util.Log.w("WebViewNav", "No se pudo abrir $uri", e)
+                    }
+                    return true
+                }
+
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
                     view?.evaluateJavascript(NFC_POLYFILL, null)
@@ -193,7 +211,7 @@ class MainActivity : ComponentActivity() {
                     super.onPageFinished(view, url)
                     view?.evaluateJavascript(NFC_POLYFILL, null)
 
-                    val isTpv = url?.contains("tpvplus.xtd.es") == true
+                    val isTpv = isTpvHost(url?.let { Uri.parse(it).host })
                     if (isTpv) {
                         android.util.Log.d("NFC_App", "TPVPlus cargado - NFC activado")
                     }
@@ -205,8 +223,17 @@ class MainActivity : ComponentActivity() {
                     error: android.net.http.SslError?
                 ) {
                     android.util.Log.w("WebViewSSL", "Error SSL detectado: $error")
-                    // Intentar forzar la confianza en el certificado para esta sesión
-                    handler?.proceed()
+                    if (BuildConfig.DEBUG) {
+                        // Solo en depuración se tolera un certificado no válido
+                        handler?.proceed()
+                    } else {
+                        handler?.cancel()
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Conexión no segura bloqueada (certificado SSL no válido)",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
 
                 override fun onReceivedError(
@@ -245,7 +272,11 @@ class MainActivity : ComponentActivity() {
                     message: String?,
                     result: JsResult?
                 ): Boolean {
-                    result?.confirm()
+                    AlertDialog.Builder(this@MainActivity)
+                        .setMessage(message)
+                        .setPositiveButton(android.R.string.ok) { _, _ -> result?.confirm() }
+                        .setOnCancelListener { result?.cancel() }
+                        .show()
                     return true
                 }
 
@@ -255,7 +286,12 @@ class MainActivity : ComponentActivity() {
                     message: String?,
                     result: JsResult?
                 ): Boolean {
-                    result?.confirm()
+                    AlertDialog.Builder(this@MainActivity)
+                        .setMessage(message)
+                        .setPositiveButton(android.R.string.ok) { _, _ -> result?.confirm() }
+                        .setNegativeButton(android.R.string.cancel) { _, _ -> result?.cancel() }
+                        .setOnCancelListener { result?.cancel() }
+                        .show()
                     return true
                 }
 
@@ -266,7 +302,14 @@ class MainActivity : ComponentActivity() {
                     defaultValue: String?,
                     result: android.webkit.JsPromptResult?
                 ): Boolean {
-                    result?.confirm()
+                    val input = EditText(this@MainActivity).apply { setText(defaultValue ?: "") }
+                    AlertDialog.Builder(this@MainActivity)
+                        .setMessage(message)
+                        .setView(input)
+                        .setPositiveButton(android.R.string.ok) { _, _ -> result?.confirm(input.text.toString()) }
+                        .setNegativeButton(android.R.string.cancel) { _, _ -> result?.cancel() }
+                        .setOnCancelListener { result?.cancel() }
+                        .show()
                     return true
                 }
             }
@@ -285,7 +328,7 @@ class MainActivity : ComponentActivity() {
 
         setContentView(root)
 
-        wv.loadUrl("https://tpvplus.xtd.es/")
+        wv.loadUrl(BuildConfig.TPV_URL)
         webView = wv
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -328,6 +371,9 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         nfcAdapter?.disableForegroundDispatch(this)
     }
+
+    private fun isTpvHost(host: String?): Boolean =
+        host != null && host.equals(Uri.parse(BuildConfig.TPV_URL).host, ignoreCase = true)
 
     private fun decodeTextRecord(payload: ByteArray): String? {
         if (payload.isEmpty()) return null
@@ -381,7 +427,7 @@ class MainActivity : ComponentActivity() {
                     
                     val script = """
                         (function(){
-                            var scannedValue = '${tagContent.replace("'", "\\'")}';
+                            var scannedValue = ${org.json.JSONObject.quote(tagContent)};
                             var _t = function(w) {
                                 try { 
                                     if(w.__nfcTriggerRead && w.__nfcTriggerRead(scannedValue)) return true;
@@ -399,7 +445,12 @@ class MainActivity : ComponentActivity() {
                         })();
                     """.trimIndent()
                     
-                    webView?.evaluateJavascript(script, null)
+                    // Solo se entrega el tag si la página cargada es el TPV
+                    if (isTpvHost(webView?.url?.let { Uri.parse(it).host })) {
+                        webView?.evaluateJavascript(script, null)
+                    } else {
+                        android.util.Log.w("NFC_Scan", "Tag ignorado: la página actual no es el TPV")
+                    }
                 }
             }
         }

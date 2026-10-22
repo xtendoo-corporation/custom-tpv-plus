@@ -44,6 +44,8 @@ export class NfcScanPopup extends Component {
             }
 
             // PUENTE NATIVO: Escuchar lectura directa desde la App Android
+            // (se restaura el handler global del POS al cerrar el wizard)
+            this._prevNfcHandler = window.handleNfcScan;
             window.handleNfcScan = (id) => {
                 if (id) {
                     this.state.nfcSupported = true;
@@ -67,6 +69,7 @@ export class NfcScanPopup extends Component {
 
         onWillUnmount(() => {
             this._stopNfc();
+            window.handleNfcScan = this._prevNfcHandler;
             window.removeEventListener('nfc-ready', this._onNfcReady);
             if (this._onKeyDown) {
                 document.removeEventListener("keydown", this._onKeyDown, true);
@@ -94,7 +97,7 @@ export class NfcScanPopup extends Component {
             this.state.nfcSupported = true;
             this.state.statusMessage = _t("NFC activo · Esperando lectura…");
 
-            this._nfcReader.addEventListener("reading", (event) => {
+            this._onNfcReading = (event) => {
                 // First: try to read NDEF text records (contains the barcode)
                 if (event.message && event.message.records) {
                     for (const record of event.message.records) {
@@ -114,9 +117,10 @@ export class NfcScanPopup extends Component {
                     const cleanId = serialNumber.replace(/:/g, "").toUpperCase();
                     this._onValueScanned(cleanId, "nfc");
                 }
-            });
+            };
+            this._nfcReader.addEventListener("reading", this._onNfcReading);
 
-            this._nfcReader.addEventListener("readingerror", () => {
+            this._onNfcReadingError = () => {
                 this.state.statusMessage = _t("Error al leer NFC. Intente de nuevo.");
                 this.state.status = "error";
                 setTimeout(() => {
@@ -125,7 +129,8 @@ export class NfcScanPopup extends Component {
                         this.state.statusMessage = _t("NFC activo · Esperando lectura…");
                     }
                 }, 2000);
-            });
+            };
+            this._nfcReader.addEventListener("readingerror", this._onNfcReadingError);
 
         } catch (error) {
             console.warn("Web NFC not available or permission denied:", error);
@@ -138,6 +143,12 @@ export class NfcScanPopup extends Component {
         if (this._nfcAbortController) {
             this._nfcAbortController.abort();
             this._nfcAbortController = null;
+        }
+        // Remove listeners so the Android polyfill (__activeReader) does not keep
+        // delivering tags to this closed dialog.
+        if (this._nfcReader) {
+            this._nfcReader.removeEventListener("reading", this._onNfcReading);
+            this._nfcReader.removeEventListener("readingerror", this._onNfcReadingError);
         }
         this._nfcReader = null;
         this.state.nfcActive = false;

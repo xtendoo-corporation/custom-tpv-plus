@@ -6,6 +6,7 @@ import { _t } from "@web/core/l10n/translation";
 import { NfcScanPopup } from "@tpv_plus_pos_nfc/app/components/nfc_scan_popup/nfc_scan_popup";
 import { WalletAmountPopup } from "@tpv_plus_pos_nfc/app/components/wallet_amount_popup/wallet_amount_popup";
 import { WalletChoicePopup } from "@tpv_plus_pos_nfc/app/components/wallet_choice_popup/wallet_choice_popup";
+import { MismatchedPartnerPopup } from "@tpv_plus_pos_nfc/app/components/mismatched_partner_popup/mismatched_partner_popup";
 import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import OrderPaymentValidation from "@point_of_sale/app/utils/order_payment_validation";
@@ -14,6 +15,66 @@ patch(PosStore.prototype, {
     setup() {
         super.setup(...arguments);
         this.tablePartnerMemory = {};
+        this._tpvNfcLastScan = { value: null, ts: 0 };
+        this._tpvNfcScanBusy = false;
+        // Global NFC entry point used by the Android app (MainActivity.onNewIntent).
+        // The scan wizard overrides it while it is open and restores it on close.
+        window.handleNfcScan = (id) => this._tpvNfcHandleGlobalScan(id);
+    },
+
+    /**
+     * Handle a tag read by the Android app outside of the scan wizard.
+     * Guards: only on ProductScreen, no open dialog, ignore repeated reads,
+     * confirm before replacing the customer already set on the order.
+     */
+    async _tpvNfcHandleGlobalScan(scannedValue) {
+        const value = this._tpvNfcNormalizeScannedValue(scannedValue);
+        if (!value || this._tpvNfcScanBusy) {
+            return;
+        }
+        const now = Date.now();
+        if (this._tpvNfcLastScan.value === value && now - this._tpvNfcLastScan.ts < 2000) {
+            return;
+        }
+        this._tpvNfcLastScan = { value, ts: now };
+
+        if (
+            this.router.state.current !== "ProductScreen" ||
+            document.body.classList.contains("modal-open")
+        ) {
+            this.notification.add(
+                _t("Lectura NFC ignorada: vuelve a la pantalla de productos para escanear."),
+                { type: "warning" }
+            );
+            return;
+        }
+
+        this._tpvNfcScanBusy = true;
+        try {
+            const partner = await this._tpvNfcGetPartnerByBarcode(value);
+            if (!partner) {
+                this.notification.add(_t("Tarjeta NFC no reconocida: ningún cliente con ese código."), {
+                    type: "danger",
+                });
+                return;
+            }
+            const currentPartner = this.getOrder()?.getPartner();
+            if (currentPartner && currentPartner.id !== partner.id) {
+                const choice = await makeAwaitable(this.dialog, MismatchedPartnerPopup, {
+                    currentPartner,
+                    scannedPartner: partner,
+                });
+                if (choice !== "change") {
+                    return;
+                }
+            }
+            const result = await this._tpvNfcProcessScannedValue(value, true);
+            if (result.handled && result.success) {
+                this.notification.add(_t("Cliente: %s", partner.name), { type: "success" });
+            }
+        } finally {
+            this._tpvNfcScanBusy = false;
+        }
     },
 
     _tpvNfcNormalizeScannedValue(scannedValue) {
