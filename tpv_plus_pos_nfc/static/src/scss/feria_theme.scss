@@ -88,3 +88,8 @@
         flex-shrink: 0;
     }
 }
+
+/* Wide screens show order and products side by side: keep a single bar (above the order) */
+@media (min-width: 768px) {
+    .product-screen .rightpane .tpv-table-bar { display: none !important; }
+}

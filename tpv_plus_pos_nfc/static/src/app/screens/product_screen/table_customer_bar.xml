@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <templates id="template" xml:space="preserve">
 
-    <!-- "Mesa N · Cliente" bar: always above the order, and above the products on small screens (PDA) -->
+    <!-- "Mesa N · Cliente" bar: always above the order and above the products; on wide screens the products one is hidden by CSS (both panes are visible) -->
     <t t-name="tpv_plus_pos_nfc.TableCustomerBar">
         <t t-set="tpvOrder" t-value="pos.getOrder()"/>
-        <div t-if="(tpvAlways or pos.isSmallProductScreen) and pos.config.module_pos_restaurant and tpvOrder"
+        <div t-if="pos.config.module_pos_restaurant and tpvOrder"
              class="tpv-table-bar d-flex align-items-center gap-3 px-3 py-2">
             <div t-if="tpvOrder.table_id" class="tpv-table-bar-table flex-shrink-0">
                 <small>Mesa</small>
@@ -20,9 +20,7 @@
 
     <t t-name="tpv_plus_pos_nfc.ProductScreenTableBar" t-inherit="point_of_sale.ProductScreen" t-inherit-mode="extension">
         <xpath expr="//OrderSummary" position="before">
-            <t t-call="tpv_plus_pos_nfc.TableCustomerBar">
-                <t t-set="tpvAlways" t-value="true"/>
-            </t>
+            <t t-call="tpv_plus_pos_nfc.TableCustomerBar"/>
         </xpath>
         <xpath expr="//CategorySelector" position="before">
             <t t-call="tpv_plus_pos_nfc.TableCustomerBar"/>
