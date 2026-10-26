@@ -45,7 +45,8 @@ export class WalletAmountPopup extends Component {
     }
 
     get isValid() {
-        return this.amount > 0.004 && !this.isOver;
+        // 0 is allowed: the customer may not want to use the wallet at all
+        return !this.isOver;
     }
 
     get isFullyCovered() {

@@ -200,12 +200,13 @@ patch(PosStore.prototype, {
             amountToUse = Math.min(walletCard.points, order.priceIncl);
         }
 
-        // 4. Apply the eWallet reward
+        // 4. Apply the eWallet reward (skipped when the customer chose not to use it)
         this._tpvNfcRemoveExistingEwalletRewardLines(order);
+        const skipWallet = payload.action === 'partial' && amountToUse < 0.005;
         // The cap makes the standard reward computation honour partial amounts
         // (see models/pos_order.js); null = use as much wallet as possible.
-        order.uiState.tpvWalletCap = payload.action === 'partial' ? amountToUse : null;
-        const applied = await this._tpvNfcApplyEwalletReward(walletCard);
+        order.uiState.tpvWalletCap = payload.action === 'partial' && !skipWallet ? amountToUse : null;
+        const applied = skipWallet || (await this._tpvNfcApplyEwalletReward(walletCard));
 
         if (!applied) {
             console.error("[tpv_plus_pos_nfc] Failed to apply eWallet reward.");

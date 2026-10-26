@@ -41,7 +41,7 @@
             </div>
             <t t-set-slot="footer">
                 <div class="wallet-actions">
-                    <t t-if="isFullyCovered">
+                    <t t-if="isFullyCovered and amount > 0">
                         <button class="btn btn-primary wallet-btn" t-att-disabled="!isValid" t-on-click="() => this.onConfirm()">
                             Pagar con monedero
                         </button>
