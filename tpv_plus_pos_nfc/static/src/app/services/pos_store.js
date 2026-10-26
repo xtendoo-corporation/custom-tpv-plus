@@ -83,10 +83,7 @@ patch(PosStore.prototype, {
                     return;
                 }
             }
-            const result = await this._tpvNfcProcessScannedValue(value, true);
-            if (result.handled && result.success) {
-                this.notification.add(_t("Cliente: %s", partner.name), { type: "success" });
-            }
+            await this._tpvNfcProcessScannedValue(value, true);
         } finally {
             this._tpvNfcScanBusy = false;
         }
