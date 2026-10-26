@@ -164,6 +164,10 @@ patch(PosStore.prototype, {
             return;
         }
         const validation = new OrderPaymentValidation({ pos: this, orderUuid: rechargeOrder.uuid });
+        // Always land on the receipt: no "skip receipt screen" shortcut and no tip screen
+        Object.defineProperty(validation, "nextPage", {
+            get: () => ({ page: "ReceiptScreen", params: { orderUuid: rechargeOrder.uuid } }),
+        });
         const validated = await validation.validateOrder(true);
         if (!validated) {
             this.navigate("PaymentScreen", { orderUuid: rechargeOrder.uuid });
