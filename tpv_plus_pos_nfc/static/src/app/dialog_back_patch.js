@@ -7,8 +7,12 @@ import { patch } from "@web/core/utils/patch";
  * "Back" on the PDA (Android back button / PWA) must close the open modal or wizard
  * instead of navigating the POS underneath.
  *
- * Dialogs are not part of the browser history, so back used to move the POS router.
- * Every dialog now pushes a sentinel history entry; a popstate that consumes it closes
+ * Inside the Android app the native back button asks the POS first (window.tpvHandleBack,
+ * called from MainActivity): no history involved, so it cannot get out of sync. The app
+ * announces itself with window.__tpvNativeBack.
+ *
+ * In a normal browser / installed PWA, dialogs are not part of the browser history, so back
+ * used to move the POS router. Every dialog then pushes a sentinel history entry; a popstate that consumes it closes
  * the top dialog and is hidden from the POS router. Sentinels left behind by dialogs
  * closed from the UI are skipped transparently, so one back press still goes back
  * exactly one screen.
@@ -46,6 +50,9 @@ function closeTopDialog() {
     entry.remove();
     return true;
 }
+
+/** Called by the Android app on the native back button: true = back consumed. */
+window.tpvHandleBack = () => closeTopDialog();
 
 window.addEventListener(
     "popstate",
@@ -90,7 +97,11 @@ patch(dialogService, {
         const originalAdd = service.add;
         service.add = (dialogClass, props, options = {}) => {
             const entry = { closed: false, href: window.location.href };
-            pushSentinel(entry);
+            if (!window.__tpvNativeBack) {
+                pushSentinel(entry);
+            } else {
+                entry.closed = true; // no history entry to skip later
+            }
             dialogs.push(entry);
             const onClose = options.onClose;
             entry.remove = originalAdd(dialogClass, props, {

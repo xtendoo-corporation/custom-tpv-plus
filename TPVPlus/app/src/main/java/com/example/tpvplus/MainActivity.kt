@@ -47,8 +47,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
+        private const val BACK_SCRIPT =
+            "(function(){try{return !!(window.tpvHandleBack && window.tpvHandleBack());}catch(e){return false;}})()"
+
         private val NFC_POLYFILL = """
             (function(){
+                // El botón atrás nativo consulta primero al POS (window.tpvHandleBack)
+                window.__tpvNativeBack = true;
+
                 // Deshabilitar Service Workers si hay problemas de SSL para que Odoo use el modo normal
                 if ('serviceWorker' in navigator) {
                     Object.defineProperty(navigator, 'serviceWorker', {
@@ -333,11 +339,21 @@ class MainActivity : ComponentActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView?.canGoBack() == true) {
-                    webView?.goBack()
-                } else {
+                val wv = webView
+                if (wv == null) {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
+                    return
+                }
+                // Primero el POS: si hay un modal o wizard abierto lo cierra y consume el atrás
+                wv.evaluateJavascript(BACK_SCRIPT) { result ->
+                    if (result == "true") return@evaluateJavascript
+                    if (wv.canGoBack()) {
+                        wv.goBack()
+                    } else {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    }
                 }
             }
         })
