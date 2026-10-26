@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates id="template" xml:space="preserve">
+
+    <!-- Always-visible "Mesa N · Cliente" bar, small screens (PDA) only -->
+    <t t-name="tpv_plus_pos_nfc.TableCustomerBar">
+        <t t-set="tpvOrder" t-value="pos.getOrder()"/>
+        <div t-if="pos.isSmallProductScreen and pos.config.module_pos_restaurant and tpvOrder"
+             class="tpv-table-bar d-flex align-items-center gap-3 px-3 py-2">
+            <div t-if="tpvOrder.table_id" class="tpv-table-bar-table flex-shrink-0">
+                <small>Mesa</small>
+                <strong t-out="tpvOrder.table_id.table_number"/>
+            </div>
+            <div class="tpv-table-bar-customer flex-grow-1 text-truncate"
+                 t-att-class="{'is-empty': !tpvOrder.getPartner()}">
+                <i class="fa fa-user-circle me-2"/>
+                <span t-out="tpvOrder.getPartner()?.name or 'Sin cliente'"/>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="tpv_plus_pos_nfc.ProductScreenTableBar" t-inherit="point_of_sale.ProductScreen" t-inherit-mode="extension">
+        <xpath expr="//OrderSummary" position="before">
+            <t t-call="tpv_plus_pos_nfc.TableCustomerBar"/>
+        </xpath>
+        <xpath expr="//CategorySelector" position="before">
+            <t t-call="tpv_plus_pos_nfc.TableCustomerBar"/>
+        </xpath>
+    </t>
+
+</templates>

@@ -181,15 +181,20 @@ patch(PosStore.prototype, {
         }
 
         let amountToUse = null;
+        let remainderMethod = null;
         if (payload.action === 'partial') {
-            amountToUse = await makeAwaitable(this.dialog, WalletAmountPopup, {
-                title: _t("Pagar cantidad específica"),
+            const partial = await makeAwaitable(this.dialog, WalletAmountPopup, {
+                title: _t("Monedero · %s", partner.name),
                 partnerName: partner.name,
                 walletBalance: walletCard.points,
                 orderTotal: order.priceIncl,
-                currencySymbol: order.currency.symbol,
+                paymentMethods: this._tpvNfcRemainderPaymentMethods(),
             });
-            if (!amountToUse) return true;
+            if (!partial) return true;
+            amountToUse = partial.amount;
+            remainderMethod = partial.methodId
+                ? this.models["pos.payment.method"].get(partial.methodId)
+                : null;
         } else {
             // Pay as much as possible (up to total or points)
             amountToUse = Math.min(walletCard.points, order.priceIncl);
@@ -197,7 +202,10 @@ patch(PosStore.prototype, {
 
         // 4. Apply the eWallet reward
         this._tpvNfcRemoveExistingEwalletRewardLines(order);
-        const applied = await this._tpvNfcApplyEwalletReward(walletCard, amountToUse);
+        // The cap makes the standard reward computation honour partial amounts
+        // (see models/pos_order.js); null = use as much wallet as possible.
+        order.uiState.tpvWalletCap = payload.action === 'partial' ? amountToUse : null;
+        const applied = await this._tpvNfcApplyEwalletReward(walletCard);
 
         if (!applied) {
             console.error("[tpv_plus_pos_nfc] Failed to apply eWallet reward.");
@@ -210,6 +218,10 @@ patch(PosStore.prototype, {
             await this._tpvNfcValidateCurrentOrder(order, originalPartner);
         } else {
             console.log("[tpv_plus_pos_nfc] Partial payment via eWallet. Navigating to Payment Screen.");
+            if (remainderMethod) {
+                // Pre-fill the remainder with the chosen method; the cashier confirms it on the payment screen
+                order.addPaymentline(remainderMethod);
+            }
             this.navigate("PaymentScreen", { orderUuid: order.uuid });
         }
 
@@ -262,6 +274,15 @@ patch(PosStore.prototype, {
         return cards.sort((a, b) => (b.points || 0) - (a.points || 0))[0] || null;
     },
 
+    /** Methods that can collect the remainder after a partial wallet payment. */
+    _tpvNfcRemainderPaymentMethods() {
+        return this.config.payment_method_ids
+            .filter((method) => method.type !== "pay_later")
+            .slice()
+            .sort((a, b) => a.sequence - b.sequence)
+            .map((method) => ({ id: method.id, name: method.name }));
+    },
+
     _tpvNfcRemoveExistingEwalletRewardLines(order) {
         const lines = order.getOrderlines().filter(
             (line) =>
@@ -274,7 +295,7 @@ patch(PosStore.prototype, {
         }
     },
 
-    async _tpvNfcApplyEwalletReward(walletCard, amountToUse = null) {
+    async _tpvNfcApplyEwalletReward(walletCard) {
         const order = this.getOrder();
 
         // 1. Try to find the reward in Odoo's claimable rewards list
@@ -286,13 +307,8 @@ patch(PosStore.prototype, {
 
         if (ewalletReward) {
             console.log("[tpv_plus_pos_nfc] Applying eWallet reward from claimable list:", ewalletReward.reward.id);
-            // If amountToUse is provided, Odoo's _applyReward might need adjustment or we trust it handles partials
-            // In ewallet, _applyReward usually applies as much as possible up to order total or points
             const result = order._applyReward(ewalletReward.reward, ewalletReward.coupon_id);
             if (result === true) {
-                if (amountToUse !== null) {
-                    this._tpvNfcAdjustRewardLineAmount(order, amountToUse);
-                }
                 return true;
             }
         }
@@ -329,10 +345,6 @@ patch(PosStore.prototype, {
             return false;
         }
 
-        if (amountToUse !== null) {
-            this._tpvNfcAdjustRewardLineAmount(order, amountToUse);
-        }
-
         // Final precision adjustment for small floating point errors (Standard check)
         const total = order.priceIncl;
         if (Math.abs(total) < 0.0001 && total !== 0) {
@@ -344,19 +356,6 @@ patch(PosStore.prototype, {
         }
 
         return true;
-    },
-
-    _tpvNfcAdjustRewardLineAmount(order, amount) {
-        const rewardLines = order.getOrderlines().filter(
-            (line) =>
-                line.is_reward_line &&
-                line.coupon_id?.program_id?.program_type === "ewallet"
-        );
-        const lastRewardLine = rewardLines[rewardLines.length - 1];
-        if (lastRewardLine) {
-            // Reward lines are usually negative
-            lastRewardLine.price_unit = -Math.abs(amount);
-        }
     },
 
     async _tpvNfcValidateCurrentOrder(order, originalPartner = null) {

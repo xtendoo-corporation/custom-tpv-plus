@@ -3,35 +3,62 @@
     <t t-name="tpv_plus_pos_nfc.WalletAmountPopup">
         <Dialog title="props.title || 'Cantidad a usar'" size="'md'" contentClass="'wallet-popup'">
             <div class="wallet-popup-body">
-                <div class="wallet-customer-name" t-out="props.partnerName"/>
-                <div class="wallet-hint">
-                    Saldo <t t-out="formattedBalance"/><t t-out="props.currencySymbol"/>
-                    · Total <t t-out="formattedTotal"/><t t-out="props.currencySymbol"/>
+                <div class="wallet-figures">
+                    <div class="wallet-figure">
+                        <span>Total</span>
+                        <strong t-out="formatMoney(props.orderTotal)"/>
+                    </div>
+                    <div class="wallet-figure">
+                        <span>Saldo</span>
+                        <strong t-out="formatMoney(props.walletBalance)"/>
+                    </div>
                 </div>
 
-                <div class="wallet-amount-field">
-                    <input type="number" inputmode="decimal" step="0.01" min="0"
-                           class="form-control wallet-amount-input"
-                           t-model="state.amount"
-                           t-ref="amountInput"
-                           t-on-keydown="(ev) => ev.key === 'Enter' &amp;&amp; onConfirm()"/>
-                    <span class="wallet-amount-currency" t-out="props.currencySymbol"/>
+                <div class="wallet-amount-display" t-att-class="{'is-over': isOver}">
+                    <small>Pagas con monedero</small>
+                    <t t-out="state.text or '0'"/> €
                 </div>
-                <div t-if="state.error" class="wallet-warning" t-out="state.error"/>
+                <div t-if="isOver" class="wallet-warning">
+                    El máximo que puedes usar es <t t-out="formatMoney(maxAmount)"/>
+                </div>
+                <div t-else="" class="wallet-remaining" t-att-class="{'is-done': isFullyCovered}">
+                    <span t-if="isFullyCovered">Pedido cubierto por completo</span>
+                    <t t-else="">
+                        <span>Resto a cobrar</span>
+                        <strong t-out="formatMoney(remaining)"/>
+                    </t>
+                </div>
 
-                <div class="wallet-shortcuts">
-                    <button t-foreach="shortcuts" t-as="value" t-key="value"
-                            class="btn btn-outline-secondary wallet-shortcut"
-                            t-on-click="() => this.setAmount(value)">
-                        <t t-out="value"/><t t-out="props.currencySymbol"/>
+                <div class="wallet-keypad">
+                    <button t-foreach="keys" t-as="key" t-key="key"
+                            class="btn wallet-key" t-att-class="key === 'half' or key === 'max' ? 'btn-outline-secondary wallet-key-quick' : 'btn-light'"
+                            t-on-click="() => this.onKey(key)">
+                        <t t-if="key === 'half'">Mitad</t>
+                        <t t-elif="key === 'max'">Máx</t>
+                        <t t-else="" t-out="key"/>
                     </button>
-                    <button class="btn btn-outline-secondary wallet-shortcut" t-on-click="() => this.setAmount(maxAmount)">Máx</button>
                 </div>
             </div>
             <t t-set-slot="footer">
                 <div class="wallet-actions">
-                    <button class="btn btn-primary wallet-btn" t-on-click="onConfirm">Confirmar pago</button>
-                    <button class="btn btn-link wallet-cancel" t-on-click="onCancel">Volver</button>
+                    <t t-if="isFullyCovered">
+                        <button class="btn btn-primary wallet-btn" t-att-disabled="!isValid" t-on-click="() => this.onConfirm()">
+                            Pagar con monedero
+                        </button>
+                    </t>
+                    <t t-else="">
+                        <div class="wallet-methods">
+                            <button t-foreach="props.paymentMethods || []" t-as="method" t-key="method.id"
+                                    class="btn btn-primary wallet-btn" t-att-disabled="!isValid"
+                                    t-on-click="() => this.onConfirm(method.id)">
+                                <small>Cobrar resto con</small>
+                                <t t-out="method.name"/>
+                            </button>
+                        </div>
+                        <button class="btn btn-secondary wallet-cancel" t-att-disabled="!isValid" t-on-click="() => this.onConfirm()">
+                            Ir a pagar el resto
+                        </button>
+                    </t>
                 </div>
             </t>
         </Dialog>
