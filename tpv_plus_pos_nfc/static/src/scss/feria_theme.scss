@@ -76,3 +76,15 @@
 @media (max-width: 991.98px) {
     .pos-topheader .pos-leftheader .badge.text-bg-info { display: none !important; }
 }
+
+/* The customer button must never push the save / "more actions" (⋮, Recarga...) buttons off screen */
+.actionpad {
+    .btn-feria-partner-active,
+    .btn-feria-partner-empty {
+        min-width: 0;
+    }
+    .mobile-more-button,
+    .actionpad .btn.ms-auto {
+        flex-shrink: 0;
+    }
+}
