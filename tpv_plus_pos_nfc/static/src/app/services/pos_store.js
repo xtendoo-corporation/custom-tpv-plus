@@ -24,6 +24,20 @@ patch(PosStore.prototype, {
     },
 
     /**
+     * Coming back from the payment screen on a phone, Odoo shows the cart pane (the
+     * order lines only). Land on the products instead: the cart is one tap away
+     * and the extra view only confuses the cashier.
+     */
+    navigate(routeName) {
+        const fromPayment = this.router.state.current === "PaymentScreen";
+        const result = super.navigate(...arguments);
+        if (fromPayment && routeName === "ProductScreen") {
+            this.mobile_pane = "right";
+        }
+        return result;
+    },
+
+    /**
      * Handle a tag read by the Android app outside of the scan wizard.
      * Guards: only on ProductScreen, no open dialog, ignore repeated reads,
      * confirm before replacing the customer already set on the order.
