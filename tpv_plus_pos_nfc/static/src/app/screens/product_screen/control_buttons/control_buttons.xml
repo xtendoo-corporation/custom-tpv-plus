@@ -21,6 +21,11 @@
                 <span class="fw-bold">Escanear NFC o Código de barras</span>
             </button>
             <button class="btn btn-secondary btn-lg d-flex align-items-center justify-content-center gap-2"
+                    t-on-click="() => pos.openCustomerHistory()">
+                <i class="fa fa-history"/>
+                <span class="fw-bold">Historial del cliente</span>
+            </button>
+            <button class="btn btn-secondary btn-lg d-flex align-items-center justify-content-center gap-2"
                     t-on-click="() => pos.openRechargeWizard()">
                 <i class="fa fa-credit-card"/>
                 <span class="fw-bold">Recarga</span>

@@ -6,6 +6,7 @@ import { _t } from "@web/core/l10n/translation";
 import { NfcScanPopup } from "@tpv_plus_pos_nfc/app/components/nfc_scan_popup/nfc_scan_popup";
 import { WalletAmountPopup } from "@tpv_plus_pos_nfc/app/components/wallet_amount_popup/wallet_amount_popup";
 import { WalletChoicePopup } from "@tpv_plus_pos_nfc/app/components/wallet_choice_popup/wallet_choice_popup";
+import { CustomerHistoryPopup } from "@tpv_plus_pos_nfc/app/components/customer_history_popup/customer_history_popup";
 import { MismatchedPartnerPopup } from "@tpv_plus_pos_nfc/app/components/mismatched_partner_popup/mismatched_partner_popup";
 import { makeAwaitable } from "@point_of_sale/app/utils/make_awaitable_dialog";
 import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
@@ -147,6 +148,21 @@ patch(PosStore.prototype, {
 
         const result = await this._tpvNfcProcessScannedValue(scannedValue);
         return result.success ? result.scannedValue : null;
+    },
+
+    /** Orders and eWallet movements of the customer assigned to the current order. */
+    openCustomerHistory() {
+        const partner = this.getOrder()?.getPartner();
+        if (!partner) {
+            this.notification.add(_t("Selecciona un cliente para ver su historial."), {
+                type: "warning",
+            });
+            return;
+        }
+        this.dialog.add(CustomerHistoryPopup, {
+            partnerId: partner.id,
+            partnerName: partner.name,
+        });
     },
 
     async _tpvNfcHandleCustomerWalletFlow(partner) {

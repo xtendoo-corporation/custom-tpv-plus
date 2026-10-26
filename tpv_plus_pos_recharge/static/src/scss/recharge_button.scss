@@ -17,3 +17,14 @@
     }
 }
 
+
+/* ===== Recharge payment popup (large, touch friendly) ===== */
+.recharge-popup {
+    .modal-footer { display: block; padding: 0 1rem 1rem; border-top: 0; }
+    .recharge-popup-body { padding: 1rem; text-align: center; }
+    .recharge-customer { font-size: 1.6rem; font-weight: 700; overflow-wrap: anywhere; }
+    .recharge-amount { font-size: 3.5rem; font-weight: 800; color: #198754; line-height: 1.2; }
+    .recharge-label { font-size: 1.3rem; color: var(--bs-secondary-color, #6c757d); }
+    .recharge-actions { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
+    .recharge-method { min-height: 4.5rem; font-size: 1.6rem; font-weight: 700; }
+}

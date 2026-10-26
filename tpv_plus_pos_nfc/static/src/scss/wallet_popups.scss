@@ -145,3 +145,38 @@
         .wallet-btn { flex: 1; line-height: 1.15; small { display: block; font-size: 0.95rem; font-weight: 400; } }
     }
 }
+
+/* ===== Customer history popup ===== */
+.history-popup {
+    .history-balance {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 0.75rem 1rem;
+        background: #71639e;
+        color: #fff;
+        font-size: 1.3rem;
+        strong { font-size: 2.2rem; }
+    }
+    .history-tabs {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        .btn { flex: 1; min-height: 3.25rem; font-size: 1.3rem; font-weight: 600; }
+    }
+    .history-empty { padding: 2rem 1rem; text-align: center; font-size: 1.3rem; color: var(--bs-secondary-color, #6c757d); }
+    .history-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    }
+    .history-main { min-width: 0; }
+    .history-title { font-size: 1.3rem; font-weight: 600; overflow-wrap: anywhere; }
+    .history-date { font-size: 1.05rem; color: var(--bs-secondary-color, #6c757d); }
+    .history-amount { font-size: 1.6rem; white-space: nowrap; &.is-in { color: #198754; } &.is-out { color: #dc3545; } }
+    .history-lines { padding: 0.25rem 1rem 0.75rem 2rem; background: var(--bs-tertiary-bg, #f8f9fa); }
+    .history-line { display: flex; justify-content: space-between; gap: 1rem; font-size: 1.15rem; padding: 0.15rem 0; }
+}

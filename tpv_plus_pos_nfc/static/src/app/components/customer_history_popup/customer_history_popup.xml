@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="tpv_plus_pos_nfc.CustomerHistoryPopup">
+        <Dialog title="'Historial · ' + props.partnerName" size="'md'" contentClass="'history-popup'" footer="false">
+            <div class="history-balance">
+                <span>Saldo monedero</span>
+                <strong t-out="formatMoney(state.data.balance)"/>
+            </div>
+            <div class="history-tabs">
+                <button class="btn" t-att-class="state.tab === 'wallet' ? 'btn-primary' : 'btn-light'" t-on-click="() => state.tab = 'wallet'">Monedero</button>
+                <button class="btn" t-att-class="state.tab === 'orders' ? 'btn-primary' : 'btn-light'" t-on-click="() => state.tab = 'orders'">Pedidos</button>
+            </div>
+
+            <div t-if="state.loading" class="history-empty">Cargando…</div>
+            <div t-elif="state.error" class="history-empty text-danger">No se pudo cargar el historial</div>
+
+            <t t-elif="state.tab === 'wallet'">
+                <div t-if="!state.data.wallet_moves.length" class="history-empty">Sin movimientos de monedero</div>
+                <div t-foreach="state.data.wallet_moves" t-as="move" t-key="move.id" class="history-row">
+                    <div class="history-main">
+                        <div class="history-title" t-out="move.description"/>
+                        <div class="history-date" t-out="formatDate(move.date)"/>
+                    </div>
+                    <strong class="history-amount" t-att-class="moveAmount(move) >= 0 ? 'is-in' : 'is-out'">
+                        <t t-if="moveAmount(move) >= 0">+</t><t t-out="formatMoney(moveAmount(move))"/>
+                    </strong>
+                </div>
+            </t>
+
+            <t t-else="">
+                <div t-if="!state.data.orders.length" class="history-empty">Sin pedidos</div>
+                <div t-foreach="state.data.orders" t-as="order" t-key="order.id" class="history-order">
+                    <div class="history-row" t-on-click="() => this.toggleOrder(order.id)">
+                        <div class="history-main">
+                            <div class="history-title" t-out="order.name"/>
+                            <div class="history-date">
+                                <t t-out="formatDate(order.date)"/>
+                                <t t-foreach="order.payments" t-as="payment" t-key="payment_index">
+                                    · <t t-out="payment.method"/>
+                                </t>
+                            </div>
+                        </div>
+                        <strong class="history-amount" t-out="formatMoney(order.total)"/>
+                    </div>
+                    <div t-if="state.openOrderId === order.id" class="history-lines">
+                        <div t-foreach="order.lines" t-as="line" t-key="line_index" class="history-line">
+                            <span><t t-out="line.qty"/> × <t t-out="line.name"/></span>
+                            <span t-out="formatMoney(line.total)"/>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </Dialog>
+    </t>
+</templates>

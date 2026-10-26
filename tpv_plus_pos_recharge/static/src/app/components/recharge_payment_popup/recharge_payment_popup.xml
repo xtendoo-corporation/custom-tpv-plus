@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="tpv_plus_pos_recharge.RechargePaymentPopup">
+        <Dialog title="'Recarga de monedero'" size="'md'" contentClass="'recharge-popup'">
+            <div class="recharge-popup-body">
+                <div class="recharge-customer" t-out="props.partnerName"/>
+                <div class="recharge-amount" t-out="formatMoney(props.amount)"/>
+                <div class="recharge-label">¿Cómo paga el cliente?</div>
+            </div>
+            <t t-set-slot="footer">
+                <div class="recharge-actions">
+                    <button t-foreach="props.paymentMethods" t-as="method" t-key="method.id"
+                            class="btn btn-primary recharge-method" t-on-click="() => this.onSelect(method.id)">
+                        <t t-out="method.name"/>
+                    </button>
+                </div>
+            </t>
+        </Dialog>
+    </t>
+</templates>
