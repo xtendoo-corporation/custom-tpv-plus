@@ -168,8 +168,10 @@ patch(PosStore.prototype, {
         Object.defineProperty(validation, "nextPage", {
             get: () => ({ page: "ReceiptScreen", params: { orderUuid: rechargeOrder.uuid } }),
         });
-        const validated = await validation.validateOrder(true);
-        if (!validated) {
+        await validation.validateOrder(true);
+        // Other modules override validateOrder without returning its result, so check the
+        // order itself: only fall back to the payment screen if it was not really paid.
+        if (!rechargeOrder.finalized) {
             this.navigate("PaymentScreen", { orderUuid: rechargeOrder.uuid });
         }
         console.log("[tpv_plus_pos_recharge] --- END openRechargeWizard ---");
