@@ -177,7 +177,7 @@ patch(PosStore.prototype, {
     },
 
     async _tpvNfcHandleCustomerWalletFlow(partner) {
-        const order = this.getOrder();
+        let order = this.getOrder();
         const originalPartner = order.getPartner();
 
         // 1. Automatically switch to the scanned partner
@@ -227,6 +227,10 @@ patch(PosStore.prototype, {
             amountToUse = Math.min(walletCard.points, order.priceIncl);
         }
 
+        // The order may have been synced (and its record refreshed) while the popups were
+        // open: work on the current record so reward and payment lines stay attached to it.
+        order = this.getOrder();
+
         // 4. Apply the eWallet reward (skipped when the customer chose not to use it)
         this._tpvNfcRemoveExistingEwalletRewardLines(order);
         const skipWallet = payload.action === 'partial' && amountToUse < 0.005;
@@ -244,10 +248,19 @@ patch(PosStore.prototype, {
         if (order.isPaid() || Math.abs(order.priceIncl) < 0.001) {
             console.log("[tpv_plus_pos_nfc] Order fully paid via eWallet. Validating...");
             await this._tpvNfcValidateCurrentOrder(order, originalPartner);
+        } else if (remainderMethod && !remainderMethod.use_payment_terminal) {
+            // The cashier already chose how the remainder is paid: charge it and show the receipt
+            const result = order.addPaymentline(remainderMethod);
+            if (result.status) {
+                await this._tpvNfcValidateCurrentOrder(order, originalPartner);
+            }
+            if (!order.finalized) {
+                this.navigate("PaymentScreen", { orderUuid: order.uuid });
+            }
         } else {
             console.log("[tpv_plus_pos_nfc] Partial payment via eWallet. Navigating to Payment Screen.");
             if (remainderMethod) {
-                // Pre-fill the remainder with the chosen method; the cashier confirms it on the payment screen
+                // Card terminals need the payment screen to send the request
                 order.addPaymentline(remainderMethod);
             }
             this.navigate("PaymentScreen", { orderUuid: order.uuid });
@@ -394,11 +407,15 @@ patch(PosStore.prototype, {
             orderUuid: order.uuid,
         });
 
-        // validateOrder(true) handles the full Odoo sequence:
-        // finalizeValidation -> shouldHideValidationBehindFeedbackScreen -> navigate to ReceiptScreen
-        const isValidated = await validation.validateOrder(true);
+        // Always land on the receipt (no "skip receipt" shortcut, no tip screen)
+        Object.defineProperty(validation, "nextPage", {
+            get: () => ({ page: "ReceiptScreen", params: { orderUuid: order.uuid } }),
+        });
 
-        if (isValidated) {
+        // Other modules override validateOrder without returning its result: check the order
+        await validation.validateOrder(true);
+
+        if (order.finalized) {
             // Restore the original partner to the memory for this table
             // so the NEXT order created for this table (manually or via New Order) gets it.
             if (this.config.module_pos_restaurant && order.table_id && originalPartner) {
