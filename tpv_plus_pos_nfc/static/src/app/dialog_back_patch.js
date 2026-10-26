@@ -14,12 +14,14 @@ import { patch } from "@web/core/utils/patch";
  * exactly one screen.
  */
 let sentinels = []; // sentinel entries above the last real history entry, oldest first
+const dialogs = []; // dialogs currently open, oldest first
 let internalPush = false;
 
 const nativePushState = window.history.pushState.bind(window.history);
 window.history.pushState = function () {
     if (!internalPush) {
-        // A real navigation: older sentinels are now buried under it.
+        // A real navigation (or another component such as Odoo's mobile bottom sheets):
+        // older sentinels are now buried under it.
         sentinels = [];
     }
     return nativePushState(...arguments);
@@ -35,6 +37,16 @@ function pushSentinel(entry) {
     }
 }
 
+/** Close the newest open dialog; returns false if none is open. */
+function closeTopDialog() {
+    const entry = dialogs.at(-1);
+    if (!entry) {
+        return false;
+    }
+    entry.remove();
+    return true;
+}
+
 window.addEventListener(
     "popstate",
     (ev) => {
@@ -42,11 +54,26 @@ window.addEventListener(
             // We just left the newest sentinel entry.
             const entry = sentinels.pop();
             ev.stopImmediatePropagation();
-            if (entry.closed) {
-                // Its dialog was closed from the UI: skip it and go back again.
-                window.history.back();
-            } else {
+            if (!entry.closed) {
                 entry.remove();
+            } else if (!closeTopDialog()) {
+                // Its dialog was closed from the UI and nothing else is open: skip it.
+                window.history.back();
+            }
+        } else if (dialogs.length) {
+            // Back with a dialog open but the sentinel bookkeeping lost (another component
+            // pushed history entries meanwhile): the dialog still has to close first, and
+            // the URL must stay where the POS router expects it.
+            ev.stopImmediatePropagation();
+            const href = dialogs.at(-1).href;
+            closeTopDialog();
+            if (window.location.href !== href) {
+                internalPush = true;
+                try {
+                    nativePushState({}, "", href);
+                } finally {
+                    internalPush = false;
+                }
             }
         } else if (ev.state?.tpvDialog) {
             // Landed on a stale sentinel buried under later navigation.
@@ -62,13 +89,18 @@ patch(dialogService, {
         const service = super.start(...arguments);
         const originalAdd = service.add;
         service.add = (dialogClass, props, options = {}) => {
-            const entry = { closed: false };
+            const entry = { closed: false, href: window.location.href };
             pushSentinel(entry);
+            dialogs.push(entry);
             const onClose = options.onClose;
             entry.remove = originalAdd(dialogClass, props, {
                 ...options,
                 onClose: async (params) => {
                     entry.closed = true;
+                    const index = dialogs.indexOf(entry);
+                    if (index > -1) {
+                        dialogs.splice(index, 1);
+                    }
                     return onClose?.(params);
                 },
             });
