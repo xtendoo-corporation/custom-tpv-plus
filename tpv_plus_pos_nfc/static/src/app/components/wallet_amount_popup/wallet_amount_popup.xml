@@ -32,6 +32,7 @@
                 <div class="wallet-keypad">
                     <button t-foreach="keys" t-as="key" t-key="key"
                             class="btn wallet-key" t-att-class="key === 'half' or key === 'max' ? 'btn-outline-secondary wallet-key-quick' : 'btn-light'"
+                            t-att-style="key === '0' ? 'grid-column: span 2' : ''"
                             t-on-click="() => this.onKey(key)">
                         <t t-if="key === 'half'">Mitad</t>
                         <t t-elif="key === 'max'">Máx</t>

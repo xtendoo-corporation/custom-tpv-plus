@@ -4,7 +4,7 @@ import { Component, useState } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 
 // 4-column keypad: digits + the quick amounts in the last column
-const KEYS = ["7", "8", "9", "half", "4", "5", "6", "max", "1", "2", "3", "⌫", ",", "0", "00", "C"];
+const KEYS = ["7", "8", "9", "half", "4", "5", "6", "max", "1", "2", "3", "⌫", ",", "0", "C"];
 
 export class WalletAmountPopup extends Component {
     static template = "tpv_plus_pos_nfc.WalletAmountPopup";
@@ -72,10 +72,6 @@ export class WalletAmountPopup extends Component {
             this.state.text = "";
             this.state.fresh = false;
             return;
-        }
-        if (key === "00") {
-            this.onKey("0");
-            return this.onKey("0");
         }
         let text = this.state.fresh ? "" : this.state.text;
         this.state.fresh = false;
