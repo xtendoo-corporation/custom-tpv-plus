@@ -55,7 +55,7 @@
                                 <t t-out="method.name"/>
                             </button>
                         </div>
-                        <button class="btn btn-secondary wallet-cancel" t-att-disabled="!isValid" t-on-click="() => this.onConfirm()">
+                        <button t-if="!props.paymentMethods?.length" class="btn btn-secondary wallet-cancel" t-att-disabled="!isValid" t-on-click="() => this.onConfirm()">
                             Ir a pagar el resto
                         </button>
                     </t>
