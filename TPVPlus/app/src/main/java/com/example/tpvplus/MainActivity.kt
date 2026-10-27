@@ -18,6 +18,14 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.CookieManager
 import android.widget.FrameLayout
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.text.InputType
+import android.os.SystemClock
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
 import android.widget.Toast
 import android.widget.EditText
 import android.app.AlertDialog
@@ -32,6 +40,13 @@ class MainActivity : ComponentActivity() {
 
     private var webView: WebView? = null
     private var nfcAdapter: NfcAdapter? = null
+
+    // Dirección del servidor de la caja (se configura en el propio dispositivo)
+    private var serverUrl: String? = null
+    private var rootView: FrameLayout? = null
+    private var setupPanel: View? = null
+    private var cornerTaps = 0
+    private var lastCornerTap = 0L
 
     // Interfaz para depuración desde JS
     class WebAppInterface(private val mContext: Context) {
@@ -151,6 +166,8 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        serverUrl = ServerConfig.load(this)
 
         // Depuración remota de WebView solo en builds de depuración
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
@@ -250,6 +267,9 @@ class MainActivity : ComponentActivity() {
                     val url = request?.url?.toString() ?: "desconocida"
                     val desc = error?.description ?: "sin descripción"
                     android.util.Log.e("WebViewError", "Error cargando recurso: $url - Error: $desc")
+                    if (request?.isForMainFrame == true) {
+                        showSetup("No se pudo conectar con ${serverUrl ?: url}.\nRevisa la dirección y que estés en la misma Wi-Fi que el servidor.")
+                    }
                 }
 
                 override fun onReceivedHttpError(
@@ -325,6 +345,25 @@ class MainActivity : ComponentActivity() {
             setBackgroundColor(Color.WHITE)
             addView(wv)
         }
+        rootView = root
+
+        // Esquina superior derecha invisible: 5 toques seguidos abren la configuración del servidor
+        val density = resources.displayMetrics.density
+        val corner = View(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                (72 * density).toInt(), (72 * density).toInt(), Gravity.TOP or Gravity.END
+            )
+            setOnClickListener {
+                val now = SystemClock.elapsedRealtime()
+                cornerTaps = if (now - lastCornerTap < 1500) cornerTaps + 1 else 1
+                lastCornerTap = now
+                if (cornerTaps >= 5) {
+                    cornerTaps = 0
+                    showSetup()
+                }
+            }
+        }
+        root.addView(corner)
 
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -334,11 +373,16 @@ class MainActivity : ComponentActivity() {
 
         setContentView(root)
 
-        wv.loadUrl(BuildConfig.TPV_URL)
         webView = wv
+        val saved = serverUrl
+        if (saved == null) showSetup() else wv.loadUrl(saved)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (setupPanel != null) {
+                    if (serverUrl != null) hideSetup()
+                    return
+                }
                 val wv = webView
                 if (wv == null) {
                     isEnabled = false
@@ -388,8 +432,103 @@ class MainActivity : ComponentActivity() {
         nfcAdapter?.disableForegroundDispatch(this)
     }
 
+    /** Solo se navega y se entregan tarjetas NFC a páginas del servidor configurado. */
     private fun isTpvHost(host: String?): Boolean =
-        host != null && host.equals(Uri.parse(BuildConfig.TPV_URL).host, ignoreCase = true)
+        host != null && host.equals(ServerConfig.hostOf(serverUrl), ignoreCase = true)
+
+    private fun hideSetup() {
+        setupPanel?.let { rootView?.removeView(it) }
+        setupPanel = null
+    }
+
+    /** Pantalla para escribir la IP del servidor; también sirve de "Reintentar" si falla la conexión. */
+    private fun showSetup(message: String? = null) {
+        val root = rootView ?: return
+        hideSetup()
+        val d = resources.displayMetrics.density
+        fun px(v: Int) = (v * d).toInt()
+
+        val title = TextView(this).apply {
+            text = "Servidor de la caja"
+            textSize = 28f
+            setTextColor(Color.BLACK)
+        }
+        val help = TextView(this).apply {
+            text = "Escribe la IP del servidor Odoo y su puerto si lo tiene, por ejemplo 192.168.0.113:8080. " +
+                "La caja se abrirá dentro de esta app."
+            textSize = 16f
+            setTextColor(Color.DKGRAY)
+            setPadding(0, px(8), 0, px(16))
+        }
+        val input = EditText(this).apply {
+            setText(serverUrl ?: "")
+            hint = "192.168.0.113:8080"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            setSingleLine(true)
+            textSize = 22f
+        }
+        val error = TextView(this).apply {
+            text = message ?: ""
+            textSize = 16f
+            setTextColor(Color.rgb(179, 38, 30))
+            setPadding(0, px(12), 0, 0)
+            visibility = if (message.isNullOrEmpty()) View.GONE else View.VISIBLE
+        }
+        val connect = Button(this).apply {
+            text = "Conectar"
+            textSize = 20f
+            setOnClickListener {
+                val url = ServerConfig.normalize(input.text.toString())
+                if (url == null) {
+                    error.text = "Dirección no válida. Ejemplo: 192.168.0.113:8080"
+                    error.visibility = View.VISIBLE
+                    return@setOnClickListener
+                }
+                ServerConfig.save(this@MainActivity, url)
+                serverUrl = url
+                hideSetup()
+                webView?.apply {
+                    clearHistory()
+                    loadUrl(url)
+                }
+            }
+        }
+        val retry = Button(this).apply {
+            text = "Reintentar"
+            textSize = 18f
+            visibility = if (serverUrl != null && !message.isNullOrEmpty()) View.VISIBLE else View.GONE
+            setOnClickListener {
+                hideSetup()
+                serverUrl?.let { webView?.loadUrl(it) }
+            }
+        }
+        val cancel = Button(this).apply {
+            text = "Cancelar"
+            textSize = 18f
+            visibility = if (serverUrl != null && message.isNullOrEmpty()) View.VISIBLE else View.GONE
+            setOnClickListener { hideSetup() }
+        }
+
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setBackgroundColor(Color.WHITE)
+            setPadding(px(24), px(24), px(24), px(24))
+            isClickable = true // que los toques no lleguen a la página de detrás
+            addView(title)
+            addView(help)
+            addView(input)
+            addView(error)
+            addView(connect)
+            addView(retry)
+            addView(cancel)
+        }
+        root.addView(panel, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+        setupPanel = panel
+        input.requestFocus()
+    }
 
     private fun decodeTextRecord(payload: ByteArray): String? {
         if (payload.isEmpty()) return null

@@ -18,8 +18,6 @@ android {
         versionCode = 2
         versionName = "1.1"
 
-        buildConfigField("String", "TPV_URL", "\"https://tpvplus.xtd.es/\"")
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
