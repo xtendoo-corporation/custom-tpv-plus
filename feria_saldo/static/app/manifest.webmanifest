@@ -1,0 +1,11 @@
+{
+    "name": "Feria Caja",
+    "short_name": "Caja",
+    "start_url": "/feria",
+    "scope": "/feria",
+    "display": "fullscreen",
+    "orientation": "any",
+    "background_color": "#f2f4f7",
+    "theme_color": "#14181f",
+    "icons": [{"src": "/feria_saldo/static/app/icon.png", "sizes": "64x64", "type": "image/png"}]
+}

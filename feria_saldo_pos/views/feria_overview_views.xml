@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="feria_overview_view_form" model="ir.ui.view">
+        <field name="name">feria.overview.view.form.inherit.feria.saldo.pos</field>
+        <field name="model">feria.overview</field>
+        <field name="inherit_id" ref="feria_saldo.feria_overview_view_form"/>
+        <field name="arch" type="xml">
+            <button name="action_open_cash" position="after">
+                <button name="action_open_pos_links" type="object" string="Pedidos del TPV" invisible="not pos_link_enabled"/>
+            </button>
+            <field name="customers" position="after">
+                <field name="pos_link_enabled" invisible="1"/>
+                <field name="pos_pending" invisible="not pos_link_enabled" decoration-warning="pos_pending > 0"/>
+                <field name="pos_review" invisible="not pos_link_enabled" decoration-danger="pos_review > 0"/>
+            </field>
+        </field>
+    </record>
+</odoo>

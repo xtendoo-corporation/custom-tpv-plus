@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.feria.saldo</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="90"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Feria" string="Feria" name="feria_saldo" groups="base.group_system">
+                    <block title="Monedero" name="feria_wallet_setting_container">
+                        <setting string="Moneda" help="Moneda de todos los movimientos">
+                            <field name="feria_currency_id"/>
+                        </setting>
+                        <setting string="Modo offline" help="Por defecto desactivado: sin conexion no se puede operar">
+                            <field name="feria_offline_mode"/>
+                        </setting>
+                        <setting string="Importe maximo por operacion" help="0 = sin limite">
+                            <field name="feria_max_amount"/>
+                        </setting>
+                        <setting string="Redes permitidas" help="Redes CIDR (192.168.1.0/24) desde las que se puede usar la pantalla de caja. Vacio = cualquiera">
+                            <field name="feria_allowed_networks"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="res_config_settings_action_feria" model="ir.actions.act_window">
+        <field name="name">Ajustes</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'feria_saldo'}</field>
+    </record>
+</odoo>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="feria_code_view_list" model="ir.ui.view">
+        <field name="name">feria.code.view.list</field>
+        <field name="model">feria.code</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="partner_id"/>
+                <field name="code"/>
+                <field name="kind"/>
+                <field name="blocked"/>
+                <field name="note"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="feria_code_view_search" model="ir.ui.view">
+        <field name="name">feria.code.view.search</field>
+        <field name="model">feria.code</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="partner_id"/>
+                <filter name="blocked" string="Bloqueados" domain="[('blocked', '=', True)]"/>
+                <filter name="archived" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="feria_code_action" model="ir.actions.act_window">
+        <field name="name">Codigos</field>
+        <field name="res_model">feria.code</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>

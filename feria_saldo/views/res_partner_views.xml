@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_partner_view_form" model="ir.ui.view">
+        <field name="name">res.partner.view.form.inherit.feria.saldo</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <page name="internal_notes" position="after">
+                <page name="feria" string="Feria" groups="feria_saldo.group_feria_user">
+                    <group>
+                        <group>
+                            <field name="feria_currency_id" invisible="1"/>
+                            <field name="feria_balance"/>
+                            <field name="feria_blocked" groups="feria_saldo.group_feria_manager"/>
+                        </group>
+                        <group>
+                            <button name="action_open_feria_topup" type="object" string="Recarga manual"
+                                    class="btn-primary" groups="feria_saldo.group_feria_manager"/>
+                            <button name="action_open_feria_statement" type="object" string="Extracto"/>
+                        </group>
+                    </group>
+                    <field name="feria_code_ids" readonly="not id">
+                        <list editable="bottom">
+                            <field name="code"/>
+                            <field name="kind"/>
+                            <field name="blocked"/>
+                            <field name="note"/>
+                        </list>
+                    </field>
+                </page>
+            </page>
+        </field>
+    </record>
+
+    <record id="res_partner_view_list_feria" model="ir.ui.view">
+        <field name="name">res.partner.view.list.feria</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <list default_order="feria_balance desc">
+                <field name="name"/>
+                <field name="feria_currency_id" column_invisible="True"/>
+                <field name="feria_balance" sum="Total en circulacion"/>
+                <field name="feria_blocked"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="res_partner_action_feria" model="ir.actions.act_window">
+        <field name="name">Saldos de clientes</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('feria_code_ids', '!=', False)]</field>
+        <field name="view_ids" eval="[Command.clear(), Command.create({'view_mode': 'list', 'view_id': ref('res_partner_view_list_feria')}), Command.create({'view_mode': 'form', 'view_id': ref('base.view_partner_form')})]"/>
+    </record>
+
+    <record id="res_partner_view_search" model="ir.ui.view">
+        <field name="name">res.partner.view.search.inherit.feria.saldo</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <filter name="inactive" position="after">
+                <separator/>
+                <filter name="feria_with_balance" string="Feria: con saldo" domain="[('feria_balance', '>', 0)]"/>
+                <filter name="feria_blocked" string="Feria: bloqueados" domain="[('feria_blocked', '=', True)]"/>
+            </filter>
+        </field>
+    </record>
+</odoo>

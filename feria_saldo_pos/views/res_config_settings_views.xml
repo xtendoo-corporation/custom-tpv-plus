@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.feria.saldo.pos</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="feria_saldo.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='feria_saldo']" position="inside">
+                <block title="Vinculo con el TPV de Odoo" name="feria_pos_setting_container">
+                    <setting string="Vincular con el TPV de Odoo"
+                             help="Cada cobro crea un pedido en el TPV con el producto auxiliar. Si el TPV no puede recibirlo (por ejemplo no hay sesion abierta) el cobro queda registrado igual y el pedido se reintenta solo.">
+                        <field name="feria_pos_link"/>
+                    </setting>
+                    <setting string="TPV" invisible="not feria_pos_link" help="Donde se crean los pedidos. Tiene que tener una sesion abierta.">
+                        <field name="feria_pos_config_id" required="feria_pos_link"/>
+                    </setting>
+                    <setting string="Metodo de pago" invisible="not feria_pos_link" help="Con que metodo del TPV se registra el cobro del monedero.">
+                        <field name="feria_pos_payment_method_id" required="feria_pos_link"/>
+                    </setting>
+                    <setting string="Producto auxiliar" invisible="not feria_pos_link" help="Una linea de este producto por cobro, con el importe del cobro. Si le pones impuestos, que sean 'incluidos en el precio'.">
+                        <field name="feria_pos_product_id" required="feria_pos_link"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

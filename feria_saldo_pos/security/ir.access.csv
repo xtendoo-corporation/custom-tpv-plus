@@ -1,0 +1,2 @@
+id,name,model_id,group_id/id,operation,domain
+feria_pos_link_user,feria.pos.link.user,feria.pos.link,feria_saldo.group_feria_user,r,

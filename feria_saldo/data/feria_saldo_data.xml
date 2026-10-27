@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Created once, then yours: change them in Ajustes -->
+    <data noupdate="1">
+        <record id="ir_config_parameter_offline_mode" model="ir.config_parameter">
+            <field name="key">feria.offline_mode</field>
+            <field name="value">disabled</field>
+        </record>
+
+        <record id="ir_config_parameter_currency" model="ir.config_parameter">
+            <field name="key">feria.currency_id</field>
+            <field name="value" eval="str(ref('base.EUR'))"/>
+        </record>
+    </data>
+
+    <!-- The wallet is in euros: the currency has to be active to be usable -->
+    <data noupdate="0">
+        <function model="res.currency" name="write" eval="[[ref('base.EUR')], {'active': True}]"/>
+    </data>
+</odoo>

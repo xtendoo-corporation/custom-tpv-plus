@@ -1,0 +1,9 @@
+id,name,model_id,group_id/id,operation,domain
+feria_code_user,feria.code.user,feria.code,feria_saldo.group_feria_user,r,
+feria_code_manager,feria.code.manager,feria.code,feria_saldo.group_feria_manager,crud,
+feria_movement_user,feria.movement.user,feria.movement,feria_saldo.group_feria_user,r,
+feria_incident_user,feria.incident.user,feria.incident,feria_saldo.group_feria_user,r,
+feria_incident_manager,feria.incident.manager,feria.incident,feria_saldo.group_feria_manager,ru,
+feria_manual_movement_wizard_manager,feria.manual.movement.wizard.manager,feria.manual.movement.wizard,feria_saldo.group_feria_manager,crud,
+feria_cash_user,feria.cash.user,feria.cash,feria_saldo.group_feria_user,r,
+feria_overview_user,feria.overview.user,feria.overview,feria_saldo.group_feria_user,crud,

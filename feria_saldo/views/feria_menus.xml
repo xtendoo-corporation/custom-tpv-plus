@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="feria_menu_root" name="Feria" sequence="45" web_icon="feria_saldo,static/description/icon.png"
+              groups="feria_saldo.group_feria_user"/>
+
+    <record id="feria_action_open_desk" model="ir.actions.act_url">
+        <field name="name">Abrir pantalla de caja</field>
+        <field name="url">/feria</field>
+        <field name="target">new</field>
+    </record>
+    <!-- First entry = what opens when you click "Feria": the back office overview, not the kiosk -->
+    <menuitem id="feria_menu_overview" name="Resumen" parent="feria_menu_root" action="feria_overview_action" sequence="1"/>
+    <menuitem id="feria_menu_desk" name="Abrir pantalla de caja" parent="feria_menu_root" action="feria_action_open_desk" sequence="5"/>
+
+    <menuitem id="feria_menu_partners" name="Saldos de clientes" parent="feria_menu_root" action="res_partner_action_feria" sequence="10"/>
+
+    <menuitem id="feria_menu_operations" name="Operaciones" parent="feria_menu_root" sequence="20"/>
+    <menuitem id="feria_menu_charges" name="Pedidos (cobros)" parent="feria_menu_operations" action="feria_movement_action_charges" sequence="10"/>
+    <menuitem id="feria_menu_recharges" name="Recargas" parent="feria_menu_operations" action="feria_movement_action_recharges" sequence="20"/>
+    <menuitem id="feria_menu_movements" name="Todos los movimientos" parent="feria_menu_operations" action="feria_movement_action" sequence="30"/>
+
+    <menuitem id="feria_menu_cash" name="Caja" parent="feria_menu_root" sequence="30"/>
+    <menuitem id="feria_menu_cash_closings" name="Cierres y recuentos" parent="feria_menu_cash" action="feria_cash_action" sequence="10"/>
+
+
+    <menuitem id="feria_menu_reports" name="Informes" parent="feria_menu_root" sequence="50"/>
+    <menuitem id="feria_menu_closing" name="Resumen por dia" parent="feria_menu_reports" action="feria_movement_action_closing" sequence="10"/>
+
+    <menuitem id="feria_menu_config" name="Configuracion" parent="feria_menu_root" sequence="90" groups="feria_saldo.group_feria_manager"/>
+    <menuitem id="feria_menu_codes" name="Codigos" parent="feria_menu_config" action="feria_code_action" sequence="20"/>
+    <menuitem id="feria_menu_settings" name="Ajustes" parent="feria_menu_config" action="res_config_settings_action_feria" sequence="30" groups="base.group_system"/>
+</odoo>
