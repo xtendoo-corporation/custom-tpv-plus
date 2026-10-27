@@ -10,7 +10,7 @@
             • Lectura de tag RFID vía Web NFC API.
         - El valor escaneado/leído se muestra en un campo "Valor".
     """,
-    'version': '19.0.1.0.0',
+    'version': '20.0.1.0.0',
     'author': 'TPV Plus',
     'category': 'Point of Sale',
     'depends': ['point_of_sale', 'pos_loyalty', 'tpv_purse_price_variable', 'pos_restaurant'],

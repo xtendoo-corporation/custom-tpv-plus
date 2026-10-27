@@ -1,6 +1,6 @@
 /** @odoo-module */
 
-import { dialogService } from "@web/core/dialog/dialog_service";
+import { DialogPlugin } from "@web/core/dialog/dialog_plugin";
 import { patch } from "@web/core/utils/patch";
 
 /**
@@ -91,32 +91,28 @@ window.addEventListener(
     true
 );
 
-patch(dialogService, {
-    start() {
-        const service = super.start(...arguments);
-        const originalAdd = service.add;
-        service.add = (dialogClass, props, options = {}) => {
-            const entry = { closed: false, href: window.location.href };
-            if (!window.__tpvNativeBack) {
-                pushSentinel(entry);
-            } else {
-                entry.closed = true; // no history entry to skip later
-            }
-            dialogs.push(entry);
-            const onClose = options.onClose;
-            entry.remove = originalAdd(dialogClass, props, {
-                ...options,
-                onClose: async (params) => {
-                    entry.closed = true;
-                    const index = dialogs.indexOf(entry);
-                    if (index > -1) {
-                        dialogs.splice(index, 1);
-                    }
-                    return onClose?.(params);
-                },
-            });
-            return entry.remove;
-        };
-        return service;
+// Odoo 20 replaced the dialog service by DialogPlugin (OWL 3): patch its add() instead.
+patch(DialogPlugin.prototype, {
+    add(dialogClass, props, options = {}) {
+        const entry = { closed: false, href: window.location.href };
+        if (!window.__tpvNativeBack) {
+            pushSentinel(entry);
+        } else {
+            entry.closed = true; // no history entry to skip later
+        }
+        dialogs.push(entry);
+        const onClose = options.onClose;
+        entry.remove = super.add(dialogClass, props, {
+            ...options,
+            onClose: async (params) => {
+                entry.closed = true;
+                const index = dialogs.indexOf(entry);
+                if (index > -1) {
+                    dialogs.splice(index, 1);
+                }
+                return onClose?.(params);
+            },
+        });
+        return entry.remove;
     },
 });

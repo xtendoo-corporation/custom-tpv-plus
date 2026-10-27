@@ -8,7 +8,7 @@
           despues de la transaccion.
         - Informacion clara y visible en la seccion de pagos del recibo.
     """,
-    'version': '19.0.1.0.0',
+    'version': '20.0.1.0.0',
     'author': 'TPV Plus',
     'category': 'Point of Sale',
     'depends': ['xtendoo_pos_receipt', 'pos_loyalty'],

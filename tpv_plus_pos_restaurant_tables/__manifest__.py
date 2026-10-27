@@ -11,7 +11,7 @@
         - Verificación de duplicados: un cliente no puede estar en dos mesas.
         - Auto-asignación del cliente al abrir una mesa con cliente asignado.
     """,
-    'version': '19.0.1.0.0',
+    'version': '20.0.1.0.0',
     'author': 'TPV Plus',
     'category': 'Point of Sale',
     'depends': ['pos_restaurant'],

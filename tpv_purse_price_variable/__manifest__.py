@@ -1,7 +1,7 @@
 {
     "name": "TPV Purse Price Variable",
     "summary": "Recarga de monedero con precio variable en POS",
-    "version": "19.0.1.0.0",
+    "version": "20.0.1.0.0",
     "author": "TPV Plus",
     "category": "Point of Sale",
     "license": "LGPL-3",
