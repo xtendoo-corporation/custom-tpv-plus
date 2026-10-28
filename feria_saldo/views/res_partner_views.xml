@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
             <page name="internal_notes" position="after">
-                <page name="feria" string="Feria" groups="feria_saldo.group_feria_user">
+                <page name="feria" string="TpvPlus" groups="feria_saldo.group_feria_user">
                     <group>
                         <group>
                             <field name="feria_currency_id" invisible="1"/>
@@ -60,8 +60,8 @@
         <field name="arch" type="xml">
             <filter name="inactive" position="after">
                 <separator/>
-                <filter name="feria_with_balance" string="Feria: con saldo" domain="[('feria_balance', '>', 0)]"/>
-                <filter name="feria_blocked" string="Feria: bloqueados" domain="[('feria_blocked', '=', True)]"/>
+                <filter name="feria_with_balance" string="TpvPlus: con saldo" domain="[('feria_balance', '>', 0)]"/>
+                <filter name="feria_blocked" string="TpvPlus: bloqueados" domain="[('feria_blocked', '=', True)]"/>
             </filter>
         </field>
     </record>

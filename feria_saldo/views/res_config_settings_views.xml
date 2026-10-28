@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="Feria" string="Feria" name="feria_saldo" groups="base.group_system">
+                <app data-string="TpvPlus" string="TpvPlus" name="feria_saldo" groups="base.group_system">
                     <block title="Monedero" name="feria_wallet_setting_container">
                         <setting string="Moneda" help="Moneda de todos los movimientos">
                             <field name="feria_currency_id"/>

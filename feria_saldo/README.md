@@ -1,36 +1,51 @@
-# feria_saldo
+# TpvPlus Saldo (`feria_saldo`)
 
 Monedero de feria para Odoo 20 Community. La tarjeta/pulsera solo guarda un identificador;
 el saldo vive aqui y es **la suma de movimientos confirmados** (nunca un campo editable).
 
 La caja es **una unica pantalla tipo kiosko** (`/feria`), sin login ni PIN, con cuatro botones grandes:
-**COBRAR, RECARGAR, VER PEDIDOS, VER SALDO**. Al pulsar uno, la pantalla pregunta **"¿Qué cliente?"**.
+**COBRAR, RECARGAR, VER SALDO Y PEDIDOS y CAJA**. Al pulsar uno, la pantalla pide **acercar la pulsera o tarjeta RFID**.
 Los formularios de Odoo quedan detras, solo para gestion (contactos y codigos, movimientos,
 ajustes, cierre).
 
 Estado: servidor + pantalla de caja hechos y probados. **Fase 6 (Kubernetes, CloudNativePG, backups) pendiente.**
 No hay dispositivos, emparejamiento, operadores ni sesiones.
 
+## Aspecto
+
+La pantalla de caja usa la identidad de xtd.es: naranja `#F45700`, burdeos `#4A0C24`, azul noche `#111827` y crema `#F7F2EC`, con la
+tipografia **Inter Tight** (incluida en el modulo, sin depender de internet) y el logo de Xtd. Iconos propios en SVG, tarjetas con
+sombras suaves y animaciones discretas (se desactivan si el sistema pide menos movimiento). Al terminar una operacion, el resultado se anima: la marca de "hecho" se dibuja, salen ondas y confeti, y el importe cuenta desde cero
+(si algo falla, la marca tiembla). Al pedir el cliente se muestra una imagen
+grande, animada, de una pulsera acercandose al lector, que invita a escanear la pulsera o tarjeta RFID.
+
+Los nombres tecnicos (`feria_saldo`, la ruta `/feria`, los parametros `feria.*`) no cambian: solo lo que ve la gente se llama **TpvPlus**.
+
 ## Pantalla de caja (`/feria`)
 
-- Inicio: los cuatro botones. Nada mas. En movil se apilan; en pantalla ancha forman una cuadricula 2×2.
-- **¿Qué cliente?**: un solo campo siempre enfocado. Sirve para pasar la tarjeta, escribir el codigo o escribir parte
-  del **nombre** (una coincidencia abre directamente al cliente; varias muestran una lista para elegir). La busqueda por
-  nombre solo encuentra clientes que tienen tarjeta. Tras leer, muestra nombre y saldo (o sigue con el importe).
+- Inicio: cuatro botones, todos con el mismo diseno blanco y naranja: Cobrar, Recargar, Ver saldo y pedidos y Caja. En movil se apilan; en pantalla ancha forman una cuadricula 2×2. La cabecera solo lleva la marca y el estado (ONLINE / SIN CONEXION).
+- **¿Qué cliente?**: una imagen grande y animada pide acercar la pulsera o la tarjeta RFID al lector. **No hay buscador**: el cliente
+  se identifica solo por su pulsera o tarjeta. Una vez identificado, un **banner** arriba muestra su nombre y su saldo, del mismo tamano.
 - **Lectura de tarjetas** (la misma tecnica que `custom-tpv-plus/TPVPlus` de Odoo 19):
-  1. Lector USB/PDA en modo teclado (RFID o NFC): escribe el codigo + Enter en el campo enfocado.
+  1. Lector USB/PDA en modo teclado (RFID o NFC): "escribe" el codigo y pulsa Enter (o termina la rafaga de teclas). Se captura en la
+     pantalla sin necesidad de ningun campo.
   2. Web NFC: Chrome Android con HTTPS, o el `NDEFReader` que inyecta la app Android (se arranca solo al abrir la pantalla).
      Si la tarjeta tiene un registro de texto NDEF se usa ese texto; si no, el UID (`04:A3:1F` o `04a31f`, se normaliza).
   3. `window.handleNfcScan(id)`: entrada global que llama la app Android cuando lee un tag.
   Una tarjeta solo se atiende en la pantalla "¿Qué cliente?" (en el inicio se ignora) y una lectura repetida en la misma
-  pantalla se descarta. El codigo se da de alta en el cliente (pestana Feria); sirve el mismo identificador que ya use
+  pantalla se descarta. El codigo se da de alta en el cliente (pestana TpvPlus); sirve el mismo identificador que ya use
   el TPV si las tarjetas son las mismas.
 - Para usar la app Android `TPVPlus` con esta pantalla hay que apuntar su `TPV_URL` a `https://servidor/feria`
   (la app solo entrega tags a paginas de ese mismo host y bloquea certificados no validos).
-- VER PEDIDOS enseña las operaciones guardadas en este modulo para ese cliente (cobros, recargas, anulaciones y ajustes), las mas
-  recientes primero, con el importe, la fecha y el saldo que quedo. No lee los pedidos de ventas de Odoo.
-- COBRAR / RECARGAR: cliente → nombre y saldo → teclado de importe → confirmar. "COBRADO"/"RECARGADO" solo
-  aparece tras la confirmacion del servidor. VER SALDO y VER PEDIDOS solo consultan.
+- **Ver saldo y pedidos**: un solo boton. Al identificar al cliente, arriba va su banner (nombre y saldo) y debajo sus pedidos: las operaciones
+  guardadas en este modulo (cobros, recargas con su forma de pago, anulaciones y ajustes), las mas recientes primero, con el importe, la fecha y
+  el saldo que quedo. No lee los pedidos de ventas de Odoo.
+- **Cobrar**: cliente → teclado de importe → COBRAR.
+- **Recargar**: cliente → el importe se forma **tocando tarjetas de 1, 2, 5, 10, 20, 50, 100 y 200 €** (monedas y billetes, con el mismo estilo blanco y naranja del modulo, sin
+  teclado numerico); un contador en cada una,
+  el desglose («2 × 20 €») y los botones deshacer y borrar → botones **«Efectivo»** o **«Tarjeta»**, con su icono y sin preguntas aparte. Solo el
+  efectivo entra en la caja (ver abajo).
+  "COBRADO"/"RECARGADO" solo aparece tras la confirmacion del servidor.
 - Sin conexion: franja roja **SIN CONEXION: NO SE PUEDE OPERAR** y botones bloqueados; se recupera sola.
 - Operacion en vuelo: se guarda en el navegador **antes** de enviarse con su uuid. Si no hay respuesta queda
   **PENDIENTE DE CONFIRMAR** y consulta `GET /movements/{uuid}` (con reintentos con backoff y jitter) hasta
@@ -41,16 +56,18 @@ No hay dispositivos, emparejamiento, operadores ni sesiones.
   pantalla completa (Chrome Android: menu → "Anadir a pantalla de inicio").
 - Los ficheros de la pantalla llevan un numero de version en la URL: tras actualizar el modulo el navegador carga siempre
   la pantalla nueva (no se queda con una copia vieja).
-- Junto a ONLINE hay un boton **Caja** (ver abajo).
-- Menu Odoo **Feria → Abrir pantalla de caja** abre la misma pantalla.
+- **Caja** es el cuarto boton del inicio (ver abajo).
+- Menu Odoo **TpvPlus → Abrir pantalla de caja** abre la misma pantalla.
 
 ## Caja: contar y cerrar
 
-El boton **💰 Caja** (arriba, junto a ONLINE) enseña el **efectivo que debe haber en el cajon** y permite contarlo y cerrarlo:
+El cuarto boton del inicio, **Caja**, enseña el **efectivo que debe haber en el cajon** y permite contarlo y cerrarlo:
 
-- **Efectivo esperado** = fondo que se dejo en el cierre anterior + recargas cobradas − devoluciones (recargas anuladas).
+- **Efectivo esperado** = fondo que se dejo en el cierre anterior + recargas **en efectivo** − devoluciones (recargas en efectivo anuladas).
+  Las recargas **con tarjeta no entran en la caja** (el dinero entra por el datafono): se muestran aparte, a titulo informativo, y anular una
+  recarga con tarjeta no saca dinero del cajon. Una recarga sin forma de pago (datos antiguos) cuenta como efectivo.
   Los **cobros no mueven efectivo** (gastan saldo del monedero): solo se muestran como ventas, a titulo informativo.
-  Una recarga manual hecha desde Odoo cuenta como efectivo.
+  Una recarga manual hecha desde Odoo pregunta como paga (efectivo por defecto).
 - **Contar caja**: se escribe lo contado y se ve al momento "La caja cuadra", "Sobran X" o "Faltan X". Se puede guardar como recuento
   (queda registrado y no cambia el periodo).
 - **Cerrar caja**: se cuenta, se elige **cuanto se deja para el dia siguiente** ("No dejar nada" lo vacia, "Dejar todo", o un importe) y se
@@ -59,17 +76,17 @@ El boton **💰 Caja** (arriba, junto a ONLINE) enseña el **efectivo que debe h
   el mismo bloqueo que los cobros, asi que ninguno se cuela entre el calculo y el cierre.
 - Es idempotente como los cobros (uuid) y se guarda antes de enviarse: con un corte de red a mitad del cierre queda "PENDIENTE" y se
   resuelve una sola vez al volver. Los registros son de solo anadir (no se editan ni se borran).
-- API: `GET /cash` (importe esperado y desglose) y `POST /cash` (`{uuid, kind: count|close, counted, kept, note}`).
-- En Odoo: **Feria → Caja → Cierres y recuentos** (con filtros por cierres, recuentos y "con diferencia").
+- API: `GET /cash` (importe esperado y desglose, incluidas las recargas con tarjeta) y `POST /cash` (`{uuid, kind: count|close, counted, kept, note}`).
+- En Odoo: **TpvPlus → Caja → Cierres y recuentos** (con filtros por cierres, recuentos y "con diferencia").
 
 ## Revisar en Odoo sin la pantalla
 
-Al pulsar **Feria** en Odoo se abre el **Resumen**: lo de hoy (recargas y cobros, con su numero), el dinero (saldo en circulacion, efectivo que debe
+Al pulsar **TpvPlus** en Odoo se abre el **Resumen**: lo de hoy (recargas y cobros, con su numero), el dinero (saldo en circulacion, efectivo que debe
 haber en caja, ultimo cierre), el estado (clientes con tarjeta y, si hay vinculo con el TPV, los pedidos pendientes o por revisar)
 y las ultimas 12 operaciones, con botones a cada pantalla. "Actualizar" muestra los datos de ese momento. La pantalla de caja (kiosko) es otra
-entrada del menu, ya no la primera: antes, pulsar Feria abria el kiosko en otra pestana.
+entrada del menu, ya no la primera: antes, pulsar TpvPlus abria el kiosko en otra pestana.
 
-Menu **Feria**: *Resumen*, *Saldos de clientes* (con el total en circulacion y filtros con saldo/bloqueados), *Operaciones* (**Pedidos (cobros)**,
+Menu **TpvPlus**: *Resumen*, *Saldos de clientes* (con el total en circulacion y filtros con saldo/bloqueados), *Operaciones* (**Pedidos (cobros)**,
 **Recargas**, **Todos los movimientos**, agrupables por dia, cliente, tipo...), *Caja* (cierres y recuentos), *Informes*
 (resumen por dia) y *Configuracion* (codigos, ajustes). Todo exportable a CSV/XLSX con la exportacion estandar.
 
@@ -86,7 +103,7 @@ Es un WebView con NFC nativo que abre la pantalla de caja dentro de la app:
   "Reintentar" y la direccion para corregir.
 - **NFC:** la app lee el tag (texto NDEF o UID en hexadecimal) y se lo entrega a la pagina, que lo busca como codigo del cliente.
   Solo se entregan tags a paginas del servidor configurado.
-- El boton "atras" de Android vuelve a los 4 botones sin cerrar la app; la pantalla se mantiene encendida.
+- El boton "atras" de Android vuelve a los 3 botones sin cerrar la app; la pantalla se mantiene encendida.
 - Permite `http` (red local sin HTTPS). Para usarla fuera de una red de confianza hace falta HTTPS en el servidor.
 - Compilar: `cd TPVPlus && ./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`.
   Pruebas de la logica de la direccion: `./gradlew testDebugUnitTest`.
@@ -113,7 +130,7 @@ Vive en `odoo/custom/src/private/feria_saldo` (`private: ["*"]` en `addons.yaml`
 docker compose exec odoo odoo -d feria_test -i feria_saldo --stop-after-init
 ```
 
-Despues: Feria → Contactos (pestana Feria: codigos y saldo; recarga manual) y abrir
+Despues: TpvPlus → Contactos (pestana TpvPlus: codigos y saldo; recarga manual) y abrir
 `http://servidor:8069/feria` en la PDA / PC de caja.
 
 ## Tests
@@ -123,8 +140,8 @@ docker compose exec odoo odoo -d feria_test -u feria_saldo --test-tags /feria_sa
     --stop-after-init --workers=0 --http-port=18069 --db-filter='^feria_test$'
 ```
 
-43 tests: saldo, idempotencia, anulacion, limite, solo-anadir, hash, incidencias, bloqueos y API HTTP (busqueda por
-nombre, tarjeta y cliente, tipos solo de back office rechazados, redes permitidas, pagina kiosko sin PAGAR ni PIN).
+69 tests: saldo, idempotencia, anulacion, limite, solo-anadir, hash, incidencias, bloqueos y API HTTP (busqueda por
+tarjeta y cliente (sin buscador por nombre), forma de pago de las recargas, tipos solo de back office rechazados, redes permitidas, pagina kiosko sin PAGAR ni PIN).
 
 Concurrencia **real** (los tests transaccionales no pueden probarla), con servidor multi-worker:
 
@@ -149,15 +166,14 @@ Importes como **cadenas** decimales (`"12.50"`). Fechas ISO 8601 UTC. El acceso 
 B=https://servidor/feria/api/v1
 curl -s $B/health                                  # sondas readiness/liveness
 curl -s $B/config
-curl -s "$B/contacts/lookup?code=04:A3:1F"         # VER SALDO por tarjeta
+curl -s "$B/contacts/lookup?code=04:A3:1F"         # saldo del cliente por tarjeta
 curl -s "$B/contacts/lookup?contact_id=7"          # ... o por cliente
-curl -s "$B/contacts/search?q=marta"               # buscar por nombre (solo clientes con tarjeta)
 curl -s $B/movements -H 'Content-Type: application/json' -d '{
   "uuid":"3f2b8c1e-5a47-4d0e-9b0a-1c2d3e4f5a6b","code_used":"04A31F","type":"COBRAR","amount":"4.50",
-  "created_at_device":"2026-10-26T14:00:00Z"}'     # COBRAR / RECARGAR (con "contact_id" en vez de "code_used" tambien vale)
+  "created_at_device":"2026-10-26T14:00:00Z"}'     # COBRAR / RECARGAR. Una recarga lleva "payment_method": "cash" | "card" (obligatorio)
 curl -s $B/movements/3f2b8c1e-5a47-4d0e-9b0a-1c2d3e4f5a6b      # resolver "pendiente"
 curl -s "$B/movements?contact_id=7&limit=20"
-curl -s "$B/orders?contact_id=7"                   # VER PEDIDOS
+curl -s "$B/orders?contact_id=7"                   # pedidos de ventas de Odoo (si esta instalado el modulo de ventas)
 ```
 
 Errores `{error_code, message}`: `CODE_UNKNOWN` (404), `CODE_BLOCKED` (403), `INSUFFICIENT_BALANCE` (409, incluye `balance`),

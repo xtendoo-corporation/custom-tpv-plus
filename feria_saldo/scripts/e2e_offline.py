@@ -9,6 +9,7 @@ import urllib.request
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
@@ -59,7 +60,7 @@ try:
 
     # 2) the network drops between "confirm" and the server
     click('start', a='COBRAR')
-    d.find_element(By.ID, 'query').send_keys('stress01' + Keys.ENTER)
+    ActionChains(d).send_keys('stress01').send_keys(Keys.ENTER).perform()
     time.sleep(1)
     before = float(api('/contacts/lookup?code=STRESS01')[1]['balance'])
     for k in '2.5':

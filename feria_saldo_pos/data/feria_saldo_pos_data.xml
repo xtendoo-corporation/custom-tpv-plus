@@ -3,8 +3,8 @@
     <data noupdate="1">
         <!-- Auxiliary product: every linked cobro becomes one POS order line with this product, priced at the cobro -->
         <record id="product_feria_charge" model="product.product">
-            <field name="name">Cobro monedero feria</field>
-            <field name="default_code">FERIA-COBRO</field>
+            <field name="name">Cobro monedero TpvPlus</field>
+            <field name="default_code">TPVPLUS-COBRO</field>
             <field name="type">service</field>
             <field name="list_price">0</field>
             <field name="available_in_pos" eval="True"/>
@@ -26,7 +26,7 @@
 
     <data noupdate="0">
         <record id="ir_cron_pos_link_sync" model="ir.cron">
-            <field name="name">Feria: enviar al TPV los cobros pendientes</field>
+            <field name="name">TpvPlus: enviar al TPV los cobros pendientes</field>
             <field name="model_id" ref="model_feria_pos_link"/>
             <field name="state">code</field>
             <field name="code">model._cron_sync()</field>

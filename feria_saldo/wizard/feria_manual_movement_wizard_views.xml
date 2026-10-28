@@ -9,6 +9,7 @@
                     <field name="partner_id" readonly="1"/>
                     <field name="type"/>
                     <field name="direction" invisible="type != 'AJUSTE'" required="type == 'AJUSTE'"/>
+                    <field name="payment_method" invisible="type != 'RECARGAR'" required="type == 'RECARGAR'" widget="radio"/>
                     <field name="amount" placeholder="0.00"/>
                     <field name="note" required="type == 'AJUSTE'"/>
                 </group>

@@ -48,6 +48,10 @@ class FeriaMovement(models.Model):
         string='Estado', required=True, readonly=True, default='confirmed', index=True,
     )
     sequence = fields.Integer(string='Secuencia', readonly=True)
+    payment_method = fields.Selection(
+        [('cash', 'Efectivo'), ('card', 'Tarjeta')], string='Pago de la recarga', readonly=True, index=True,
+        help='Solo recargas. El efectivo entra en la caja; la tarjeta no. Sin valor (datos antiguos) se trata como efectivo.',
+    )
     hash_prev = fields.Char(readonly=True)
     hash = fields.Char(readonly=True)
     ref_movement_id = fields.Many2one('feria.movement', string='Movimiento anulado', readonly=True, ondelete='restrict')
@@ -90,18 +94,21 @@ class FeriaMovement(models.Model):
         return currency or self.env.company.currency_id
 
     @staticmethod
-    def _hash_of(prev, uuid, partner_id, type_, amount, created_at_device, sequence):
-        return sha256_hex(
+    def _hash_of(prev, uuid, partner_id, type_, amount, created_at_device, sequence, payment_method=None):
+        parts = [
             prev, uuid, partner_id, type_, _dec(amount),
             created_at_device.strftime('%Y-%m-%dT%H:%M:%S') if created_at_device else '',
             sequence or '',
-        )
+        ]
+        if payment_method:  # added later: movements without it keep the hash they always had
+            parts.append(payment_method)
+        return sha256_hex(*parts)
 
     def _compute_hash(self, prev):
         self.ensure_one()
         return self._hash_of(
             prev, self.uuid, self.partner_id.id, self.type, self.amount,
-            self.created_at_device, self.sequence,
+            self.created_at_device, self.sequence, self.payment_method,
         )
 
     def _to_api(self):
@@ -119,6 +126,7 @@ class FeriaMovement(models.Model):
             'created_at_device': self.created_at_device and self.created_at_device.isoformat() + 'Z' or None,
             'received_at': self.received_at.isoformat() + 'Z',
             'sequence': self.sequence or None,
+            'payment_method': self.payment_method or None,
             'hash': self.hash or None,
             'ref_uuid': self.ref_movement_id.uuid or None,
             'note': self.note or None,
@@ -130,7 +138,7 @@ class FeriaMovement(models.Model):
     @api.model
     def _feria_register(self, *, uuid, partner_id, type, amount=None, code_used=None,
                         created_at_device=None, sequence=None, ref_uuid=None,
-                        note=None, direction=None, from_kiosk=False):
+                        note=None, direction=None, from_kiosk=False, payment_method=None):
         """Register one movement, serialized per contact and durable on return.
 
         Runs on its own READ COMMITTED transaction: takes the chain lock, then the contact
@@ -142,7 +150,7 @@ class FeriaMovement(models.Model):
             movement, duplicate = env['feria.movement']._feria_register_locked(
                 uuid=uuid, partner_id=partner_id, type=type, amount=amount, code_used=code_used,
                 created_at_device=created_at_device, sequence=sequence, ref_uuid=ref_uuid,
-                note=note, direction=direction, from_kiosk=from_kiosk,
+                note=note, direction=direction, from_kiosk=from_kiosk, payment_method=payment_method,
             )
             result = movement._to_api()
         result['duplicate'] = duplicate
@@ -150,7 +158,7 @@ class FeriaMovement(models.Model):
 
     @api.model
     def _feria_register_locked(self, *, uuid, partner_id, type, amount, code_used,
-                               created_at_device, sequence, ref_uuid, note, direction, from_kiosk):
+                               created_at_device, sequence, ref_uuid, note, direction, from_kiosk, payment_method=None):
         cr = self.env.cr
         if not isinstance(uuid, str) or not UUID_RE.match(uuid):
             raise FeriaError('VALIDATION_ERROR', 'uuid must be a lowercase RFC 4122 uuid')
@@ -168,7 +176,15 @@ class FeriaMovement(models.Model):
         if type != 'ANULACION' and amount is None:
             raise FeriaError('VALIDATION_ERROR', 'amount is required')
 
-        payload = {'partner_id': partner_id, 'type': type, 'amount': amount}
+        if type == 'RECARGAR':
+            if payment_method not in ('cash', 'card'):
+                if from_kiosk:
+                    raise FeriaError('VALIDATION_ERROR', 'payment_method must be cash or card for a recarga')
+                payment_method = 'cash'  # back office default: the person at the desk takes cash
+        else:
+            payment_method = None
+
+        payload = {'partner_id': partner_id, 'type': type, 'amount': amount, 'payment_method': payment_method}
 
         existing = self.search([('uuid', '=', uuid)], limit=1)
         if existing:
@@ -214,6 +230,7 @@ class FeriaMovement(models.Model):
                 raise FeriaError('VALIDATION_ERROR', 'ANULACION amount must equal the original amount')
             amount = _dec(original.amount)
             signed = -_dec(original.signed_amount)
+            payment_method = original.payment_method or ('cash' if original.type == 'RECARGAR' else None)
         elif type == 'AJUSTE':
             signed = amount if direction == 'in' else -amount
         else:
@@ -257,7 +274,8 @@ class FeriaMovement(models.Model):
             'created_at_device': created_at_device or False,
             'sequence': sequence,
             'hash_prev': hash_prev,
-            'hash': self._hash_of(hash_prev, uuid, partner_id, type, amount, created_at_device, sequence),
+            'hash': self._hash_of(hash_prev, uuid, partner_id, type, amount, created_at_device, sequence, payment_method),
+            'payment_method': payment_method or False,
             'ref_movement_id': original.id or False,
             'note': note or False,
         }
@@ -283,7 +301,8 @@ class FeriaMovement(models.Model):
     @api.model
     def _replay(self, existing, payload):
         same_amount = payload['amount'] is None or _dec(existing.amount) == payload['amount']
-        if existing.partner_id.id != payload['partner_id'] or existing.type != payload['type'] or not same_amount:
+        same_payment = payload['type'] != 'RECARGAR' or (existing.payment_method or 'cash') == payload['payment_method']
+        if existing.partner_id.id != payload['partner_id'] or existing.type != payload['type'] or not same_amount or not same_payment:
             raise FeriaError(
                 'DUPLICATE', 'This uuid was already used with different data', 409,
                 movement=existing._to_api(),

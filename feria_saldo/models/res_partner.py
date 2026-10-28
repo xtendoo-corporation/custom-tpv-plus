@@ -4,12 +4,12 @@ from odoo import api, fields, models
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
-    feria_code_ids = fields.One2many('feria.code', 'partner_id', string='Codigos de feria')
-    feria_movement_ids = fields.One2many('feria.movement', 'partner_id', string='Movimientos de feria')
-    feria_blocked = fields.Boolean(string='Bloqueado en feria', copy=False)
+    feria_code_ids = fields.One2many('feria.code', 'partner_id', string='Codigos TpvPlus')
+    feria_movement_ids = fields.One2many('feria.movement', 'partner_id', string='Movimientos TpvPlus')
+    feria_blocked = fields.Boolean(string='Bloqueado en TpvPlus', copy=False)
     feria_currency_id = fields.Many2one('res.currency', compute='_compute_feria_currency_id')
     feria_balance = fields.Monetary(
-        string='Saldo de feria', currency_field='feria_currency_id',
+        string='Saldo TpvPlus', currency_field='feria_currency_id',
         compute='_compute_feria_balance', store=True, readonly=True, copy=False,
     )
 

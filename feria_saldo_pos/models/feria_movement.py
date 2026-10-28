@@ -19,5 +19,5 @@ class FeriaMovement(models.Model):
         try:
             self.env['feria.pos.link']._after_movement(result)
         except Exception:  # noqa: BLE001
-            _logger.exception('Feria: POS link failed after movement %s', result.get('uuid'))
+            _logger.exception('TpvPlus: POS link failed after movement %s', result.get('uuid'))
         return result

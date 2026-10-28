@@ -3,7 +3,7 @@ from odoo import fields, models
 
 class FeriaIncident(models.Model):
     _name = 'feria.incident'
-    _description = 'Incidencia de feria'
+    _description = 'Incidencia de TpvPlus'
     _order = 'id desc'
 
     type = fields.Selection(

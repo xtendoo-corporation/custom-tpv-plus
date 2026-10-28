@@ -10,8 +10,6 @@ from ..feria_tools import API_VERSION, FeriaError, ip_allowed, normalize_code, p
 _logger = logging.getLogger(__name__)
 
 HISTORY_MAX = 200
-SEARCH_MIN_CHARS = 2
-SEARCH_MAX_RESULTS = 8
 
 
 def _respond(data, status=200):
@@ -94,7 +92,7 @@ class FeriaApi(http.Controller):
             cr.execute('SELECT 1')
             db_ok = cr.fetchone() == (1,)
         except Exception:  # noqa: BLE001 - the probe must answer even if the database is gone
-            _logger.exception('Feria health check: database unreachable')
+            _logger.exception('TpvPlus health check: database unreachable')
             db_ok = False
         return _respond(
             {'status': 'ok' if db_ok else 'error', 'server_time': _server_time(), 'db_ok': db_ok},
@@ -119,7 +117,7 @@ class FeriaApi(http.Controller):
     @http.route('/feria/api/v1/contacts/lookup', methods=['GET'], **ROUTE)
     @endpoint()
     def lookup(self, env, code=None, contact_id=None, **kwargs):
-        """Customer by card code or by id (after picking from a name search)."""
+        """Customer by card code, or by id."""
         code_record = env['feria.code']
         if contact_id:
             try:
@@ -132,18 +130,6 @@ class FeriaApi(http.Controller):
             code_record = self._find_code(env, code)
             partner = code_record.partner_id
         return _respond(self._contact_payload(partner, code_record))
-
-    @http.route('/feria/api/v1/contacts/search', methods=['GET'], **ROUTE)
-    @endpoint()
-    def search(self, env, q='', **kwargs):
-        """Customers with a card whose name matches; for typing a name instead of reading the card."""
-        text = (q or '').strip()
-        if len(text) < SEARCH_MIN_CHARS:
-            return _respond({'contacts': []})
-        partners = env['res.partner'].search(
-            [('feria_code_ids', '!=', False), ('name', 'ilike', text)], limit=SEARCH_MAX_RESULTS, order='name',
-        )
-        return _respond({'contacts': [{'id': p.id, 'name': p.name, 'ref': p.ref or None} for p in partners]})
 
     @staticmethod
     def _find_code(env, raw):
@@ -211,6 +197,7 @@ class FeriaApi(http.Controller):
             sequence=sequence,
             note=str(data['note'])[:255] if data.get('note') else None,
             from_kiosk=True,
+            payment_method=str(data['payment_method']).lower() if data.get('payment_method') else None,
         )
         return _respond(result)
 

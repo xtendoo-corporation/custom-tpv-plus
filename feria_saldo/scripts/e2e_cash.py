@@ -41,7 +41,8 @@ def check(name, passed, detail=''):
 # known starting point: empty period, then 50 of recargas and a 10 cobro (which moves no cash)
 _, base = api('GET', '/cash')
 api('POST', '/cash', {'uuid': str(uuid.uuid4()), 'kind': 'close', 'counted': base['expected'], 'kept': '0'})
-api('POST', '/movements', {'uuid': str(uuid.uuid4()), 'code_used': 'ESTELA01', 'type': 'RECARGAR', 'amount': '50.00'})
+api('POST', '/movements', {'uuid': str(uuid.uuid4()), 'code_used': 'ESTELA01', 'type': 'RECARGAR', 'amount': '50.00', 'payment_method': 'cash'})
+api('POST', '/movements', {'uuid': str(uuid.uuid4()), 'code_used': 'ESTELA01', 'type': 'RECARGAR', 'amount': '30.00', 'payment_method': 'card'})  # card: never in the drawer
 api('POST', '/movements', {'uuid': str(uuid.uuid4()), 'code_used': 'ESTELA01', 'type': 'COBRAR', 'amount': '10.00'})
 
 options = Options()
@@ -73,15 +74,15 @@ def net(offline):
 try:
     d.get(URL)
     time.sleep(1.5)
-    check('button "Caja" next to ONLINE on the home bar',
-          d.find_element(By.CSS_SELECTOR, '.bar .right .cashbtn').is_displayed()
-          and d.find_element(By.CSS_SELECTOR, '.bar .right #pill').is_displayed())
+    tiles = d.find_elements(By.CSS_SELECTOR, '.home .tile')
+    check('Caja is the fourth tile of the home screen', len(tiles) == 4 and 'Caja' in tiles[3].text, [t.text.split('\n')[0] for t in tiles])
+    check('the header no longer has a cash button', not d.find_elements(By.CSS_SELECTOR, '.bar .cashbtn'))
     d.save_screenshot(f'{OUT}/cash_1_home.png')
 
     click('cash')
     time.sleep(1)
     screen = text()
-    check('shows the cash that should be in the drawer (recargas, not cobros)', '50,00' in screen and 'Recargas cobradas' in screen, screen[:150])
+    check('shows the cash that should be in the drawer (cash recargas only: 50, not the 30 paid by card)', '50,00' in screen and 'Recargas en efectivo' in screen and 'con tarjeta' in screen.lower() and '30,00' in screen, screen[:150])
     d.save_screenshot(f'{OUT}/cash_2_summary.png')
 
     # count: 49 -> missing 1

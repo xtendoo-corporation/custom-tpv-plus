@@ -158,3 +158,56 @@ class TestMovement(FeriaCommon):
             })).action_confirm()
         wizard.action_confirm()
         self.assertEqual(self.balance(), Decimal('12.50'))
+
+    def test_a_recharge_stores_how_it_was_paid(self):
+        cash = self.register('RECARGAR', '10.00')
+        card = self.register('RECARGAR', '10.00', payment_method='card')
+        self.assertEqual((cash['payment_method'], card['payment_method']), ('cash', 'card'))
+        charge = self.register('COBRAR', '3.00', payment_method='card')  # not a recarga: ignored
+        self.assertIsNone(charge['payment_method'])
+
+    def test_the_kiosk_must_say_how_a_recharge_is_paid(self):
+        error = self.assertRejected('VALIDATION_ERROR', type_='RECARGAR', amount='5.00', payment_method=None)
+        self.assertIn('payment_method', error.message)
+        self.assertRejected('VALIDATION_ERROR', type_='RECARGAR', amount='5.00', payment_method='bizum')
+
+    def test_back_office_recharge_defaults_to_cash(self):
+        result = self.register('RECARGAR', '5.00', from_kiosk=False, payment_method=None)
+        self.assertEqual(result['payment_method'], 'cash')
+
+    def test_cancelling_a_recharge_keeps_its_payment_method(self):
+        card = self.register('RECARGAR', '8.00', payment_method='card')
+        cancel = self.register('ANULACION', None, ref_uuid=card['uuid'], from_kiosk=False)
+        self.assertEqual(cancel['payment_method'], 'card')
+
+    def test_replaying_with_another_payment_method_is_a_conflict(self):
+        movement_uuid = str(uuid.uuid4())
+        self.register('RECARGAR', '6.00', uuid=movement_uuid)
+        self.assertTrue(self.register('RECARGAR', '6.00', uuid=movement_uuid)['duplicate'])
+        error = self.assertRejected('DUPLICATE', type_='RECARGAR', amount='6.00', uuid=movement_uuid, payment_method='card')
+        self.assertEqual(error.extra['movement']['payment_method'], 'cash')
+
+    def test_hash_chain_stays_valid_with_payment_methods(self):
+        self.register('RECARGAR', '2.00')
+        self.register('RECARGAR', '3.00', payment_method='card')
+        self.register('COBRAR', '1.00')
+        with self.assertRaises(UserError):  # "the chain is correct"
+            self.env['feria.movement'].action_verify_chain()
+
+    def test_movements_without_payment_method_keep_the_hash_they_always_had(self):
+        from datetime import datetime
+
+        from odoo.addons.feria_saldo.feria_tools import sha256_hex
+        moment = datetime(2026, 10, 27, 10, 0, 0)
+        legacy = sha256_hex('prev', 'u-1', 7, 'COBRAR', Decimal('4.00'), '2026-10-27T10:00:00', 3)
+        self.assertEqual(self.env['feria.movement']._hash_of('prev', 'u-1', 7, 'COBRAR', 4, moment, 3), legacy)
+        self.assertNotEqual(self.env['feria.movement']._hash_of('prev', 'u-1', 7, 'RECARGAR', 4, moment, 3, 'card'), legacy)
+
+    def test_manual_wizard_recharge_by_card_stays_out_of_the_drawer(self):
+        wizard = self.env['feria.manual.movement.wizard'].create({
+            'partner_id': self.partner.id, 'type': 'RECARGAR', 'amount': '20', 'payment_method': 'card',
+        })
+        before = self.env['feria.cash']._summary()['expected']
+        wizard.action_confirm()
+        self.assertEqual(self.balance(), Decimal('20.00'))
+        self.assertEqual(self.env['feria.cash']._summary()['expected'], before)

@@ -11,6 +11,7 @@
                 <field name="opening_float" optional="show"/>
                 <field name="recharges" optional="show"/>
                 <field name="refunds" optional="show"/>
+                <field name="card_recharges" optional="hide"/>
                 <field name="expected"/>
                 <field name="counted"/>
                 <field name="difference"/>
@@ -41,6 +42,7 @@
                             <field name="opening_float"/>
                             <field name="recharges"/>
                             <field name="refunds"/>
+                            <field name="card_recharges"/>
                             <field name="expected"/>
                             <field name="counted"/>
                             <field name="difference"/>

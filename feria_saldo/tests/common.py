@@ -24,6 +24,8 @@ class FeriaCommon(BaseCommon):
             'amount': Decimal(amount) if amount is not None else None,
             'from_kiosk': True,
         }
+        if type_ == 'RECARGAR':
+            values['payment_method'] = 'cash'  # the kiosk always says how a recarga is paid
         values.update(kwargs)
         return self.env['feria.movement']._feria_register(**values)
 

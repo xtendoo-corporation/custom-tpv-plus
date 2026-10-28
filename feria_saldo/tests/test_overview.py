@@ -27,15 +27,18 @@ class TestOverview(FeriaCommon):
         recharges, charges = Decimal(str(before.today_recharges)), Decimal(str(before.today_charges))
         recharges_count, charges_count = before.today_recharges_count, before.today_charges_count
         balance, cash = Decimal(str(before.balance_total)), Decimal(str(before.cash_expected))
+        card_before = Decimal(str(before.today_card_recharges))
         self.register('RECARGAR', '40.00')
+        self.register('RECARGAR', '10.00', payment_method='card')
         self.register('COBRAR', '15.00')
         after = self.overview()
-        self.assertEqual(Decimal(str(after.today_recharges)) - recharges, Decimal('40.00'))
+        self.assertEqual(Decimal(str(after.today_recharges)) - recharges, Decimal('50.00'))  # 40 cash + 10 card
+        self.assertEqual(Decimal(str(after.today_card_recharges)) - card_before, Decimal('10.00'))
         self.assertEqual(Decimal(str(after.today_charges)) - charges, Decimal('15.00'))
-        self.assertEqual(after.today_recharges_count - recharges_count, 1)
+        self.assertEqual(after.today_recharges_count - recharges_count, 2)
         self.assertEqual(after.today_charges_count - charges_count, 1)
-        self.assertEqual(Decimal(str(after.balance_total)) - balance, Decimal('25.00'))   # 40 in, 15 spent
-        self.assertEqual(Decimal(str(after.cash_expected)) - cash, Decimal('40.00'))       # cobros move no cash
+        self.assertEqual(Decimal(str(after.balance_total)) - balance, Decimal('35.00'))   # 50 in, 15 spent
+        self.assertEqual(Decimal(str(after.cash_expected)) - cash, Decimal('40.00'))       # only the cash one; card and cobros move no cash
         self.assertEqual(after.currency_id.name, 'EUR')
         self.assertTrue(after.last_movement_at)
 

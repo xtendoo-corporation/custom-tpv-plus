@@ -8,6 +8,7 @@
                 <field name="received_at"/>
                 <field name="partner_id"/>
                 <field name="type"/>
+                <field name="payment_method" optional="show"/>
                 <field name="amount" sum="Total"/>
                 <field name="signed_amount" sum="Efecto neto"/>
                 <field name="balance_after"/>
@@ -37,6 +38,7 @@
                             <field name="partner_id"/>
                             <field name="code_used"/>
                             <field name="type"/>
+                            <field name="payment_method" invisible="type not in ('RECARGAR', 'ANULACION')"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="amount"/>
                             <field name="signed_amount"/>
@@ -67,11 +69,14 @@
                 <field name="code_used"/>
                 <filter name="collect" string="Cobros" domain="[('type', '=', 'COBRAR')]"/>
                 <filter name="topup" string="Recargas" domain="[('type', '=', 'RECARGAR')]"/>
+                <filter name="topup_cash" string="Recargas en efectivo" domain="[('type', '=', 'RECARGAR'), ('payment_method', '!=', 'card')]"/>
+                <filter name="topup_card" string="Recargas con tarjeta" domain="[('type', '=', 'RECARGAR'), ('payment_method', '=', 'card')]"/>
                 <filter name="adjust" string="Ajustes y anulaciones" domain="[('type', 'in', ('AJUSTE', 'ANULACION'))]"/>
                 <separator/>
                 <filter name="today" string="Hoy" domain="[('received_at', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0, 0, 0)).to_utc())]"/>
                 <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'type'}"/>
+                    <filter name="group_payment" string="Pago de la recarga" context="{'group_by': 'payment_method'}"/>
                     <filter name="group_day" string="Dia" context="{'group_by': 'received_at:day'}"/>
                 </group>
             </search>

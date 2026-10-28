@@ -51,7 +51,7 @@ class FeriaPosLink(models.Model):
         method = self.env['pos.payment.method'].browse(params.get_int('feria.pos_payment_method_id')).exists()
         product = self.env['product.product'].browse(params.get_int('feria.pos_product_id')).exists()
         if not config:
-            raise UserError('Elige el TPV en Ajustes > Feria > Vinculo con el TPV de Odoo.')
+            raise UserError('Elige el TPV en Ajustes > TpvPlus > Vinculo con el TPV de Odoo.')
         if not method or method not in config.payment_method_ids:
             raise UserError(f'Elige un metodo de pago que pertenezca al TPV «{config.display_name}».')
         if not product:
@@ -120,7 +120,7 @@ class FeriaPosLink(models.Model):
         except UserError as error:
             self.error = error.args[0]
         except Exception as error:  # noqa: BLE001 - the POS must never break the wallet; retried by the cron
-            _logger.exception('Feria: could not create the POS order of cobro %s', self.movement_id.uuid)
+            _logger.exception('TpvPlus: could not create the POS order of cobro %s', self.movement_id.uuid)
             self.error = str(error)
         else:
             self.write({'state': 'done', 'pos_order_id': order.id, 'error': False})

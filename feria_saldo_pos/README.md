@@ -3,13 +3,13 @@
 Vinculo opcional de **feria_saldo** con el **TPV de Odoo**. Se instala solo cuando estan instalados `feria_saldo` y `point_of_sale`.
 
 ## Como se activa
-Ajustes → **Feria** → *Vinculo con el TPV de Odoo*:
+Ajustes → **TpvPlus** → *Vinculo con el TPV de Odoo*:
 
 1. Marca **Vincular con el TPV de Odoo**.
 2. Elige el **TPV** (necesita una sesion abierta), el **metodo de pago** del TPV con el que se registra el cobro (por ejemplo uno llamado
    "Monedero") y el **producto auxiliar**.
 
-El producto auxiliar (**«Cobro monedero feria»**, referencia `FERIA-COBRO`) se crea con el modulo: servicio, disponible en el TPV, sin
+El producto auxiliar (**«Cobro monedero TpvPlus»**, referencia `TPVPLUS-COBRO`) se crea con el modulo: servicio, disponible en el TPV, sin
 impuestos. Si quieres IVA, ponselo con un impuesto **incluido en el precio** para que el total del pedido coincida con el cobro.
 
 ## Que hace
@@ -18,7 +18,7 @@ impuestos. Si quieres IVA, ponselo con un impuesto **incluido en el precio** par
 - Las **recargas no** crean pedido: son un pago por adelantado, no una venta (si no, la venta se contaria dos veces).
 - **Nunca bloquea un cobro.** El monedero se confirma primero; despues se intenta crear el pedido. Si el TPV no puede (no hay sesion abierta,
   esta ocupado o mal configurado) el cobro queda igualmente registrado y el pedido queda **pendiente**; un cron lo reintenta cada 5 minutos
-  (y se puede reintentar a mano). Ver **Feria → Operaciones → Pedidos del TPV**.
+  (y se puede reintentar a mano). Ver **TpvPlus → Operaciones → Pedidos del TPV**.
 - Los pedidos se crean de uno en uno (bloqueo en PostgreSQL), porque el TPV bloquea su propia numeracion: sin eso, cobros simultaneos
   fallaban al crear el pedido.
 - **Anulaciones:** si el cobro aun no se habia enviado, el pedido se cancela. Si ya estaba en el TPV, queda marcado **"Revisar en el TPV"** y

@@ -15,7 +15,7 @@
                 </header>
                 <sheet>
                     <div class="oe_title">
-                        <h1>Resumen de la feria</h1>
+                        <h1>Resumen de TpvPlus</h1>
                         <p class="text-muted">Lo que esta pasando ahora. Pulsa "Actualizar" para ver los datos de este momento.</p>
                     </div>
                     <field name="currency_id" invisible="1"/>
@@ -23,6 +23,7 @@
                         <group string="Hoy" name="today">
                             <field name="today_recharges"/>
                             <field name="today_recharges_count"/>
+                            <field name="today_card_recharges"/>
                             <field name="today_charges"/>
                             <field name="today_charges_count"/>
                             <field name="last_movement_at"/>

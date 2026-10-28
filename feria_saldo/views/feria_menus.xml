@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="feria_menu_root" name="Feria" sequence="45" web_icon="feria_saldo,static/description/icon.png"
+    <menuitem id="feria_menu_root" name="TpvPlus" sequence="45" web_icon="feria_saldo,static/description/icon.png"
               groups="feria_saldo.group_feria_user"/>
 
     <record id="feria_action_open_desk" model="ir.actions.act_url">
@@ -8,7 +8,7 @@
         <field name="url">/feria</field>
         <field name="target">new</field>
     </record>
-    <!-- First entry = what opens when you click "Feria": the back office overview, not the kiosk -->
+    <!-- First entry = what opens when you click "TpvPlus": the back office overview, not the kiosk -->
     <menuitem id="feria_menu_overview" name="Resumen" parent="feria_menu_root" action="feria_overview_action" sequence="1"/>
     <menuitem id="feria_menu_desk" name="Abrir pantalla de caja" parent="feria_menu_root" action="feria_action_open_desk" sequence="5"/>
 

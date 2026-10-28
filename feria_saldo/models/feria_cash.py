@@ -24,8 +24,9 @@ class FeriaCash(models.Model):
     last_movement_id = fields.Integer(string='Ultimo movimiento incluido', readonly=True)
     currency_id = fields.Many2one('res.currency', string='Moneda', required=True, readonly=True)
     opening_float = fields.Monetary(string='Fondo inicial', readonly=True, help='Lo que se dejo en caja en el cierre anterior')
-    recharges = fields.Monetary(string='Recargas cobradas', readonly=True)
-    refunds = fields.Monetary(string='Devoluciones', readonly=True, help='Recargas anuladas: dinero que se devuelve')
+    recharges = fields.Monetary(string='Recargas en efectivo', readonly=True)
+    refunds = fields.Monetary(string='Devoluciones', readonly=True, help='Recargas en efectivo anuladas: dinero que se devuelve')
+    card_recharges = fields.Monetary(string='Recargas con tarjeta', readonly=True, help='Informativo: el dinero entra por el datafono, no por el cajon')
     expected = fields.Monetary(string='Esperado en caja', readonly=True)
     counted = fields.Monetary(string='Contado', readonly=True)
     difference = fields.Monetary(string='Diferencia', readonly=True, help='Contado menos esperado')
@@ -62,8 +63,9 @@ class FeriaCash(models.Model):
     def _summary(self):
         """What the drawer should hold now, in the caller's transaction.
 
-        Cash enters with RECARGAR and leaves when a recarga is cancelled. COBRAR spends wallet
-        balance, so it moves no cash and is only reported as sales. A period starts right after
+        Cash enters with RECARGAR paid in cash and leaves when such a recarga is cancelled. A recarga
+        paid by card never touches the drawer, and COBRAR spends wallet balance, so neither moves cash.
+        A recarga without payment method (older data) counts as cash. A period starts right after
         the last movement included in the previous cierre, so nothing is counted twice or missed.
         """
         cr = self.env.cr
@@ -73,10 +75,12 @@ class FeriaCash(models.Model):
         after_id = last[2] if last else 0
         cr.execute(
             """
-            SELECT COALESCE(SUM(m.amount) FILTER (WHERE m.type = 'RECARGAR'), 0)::text,
-                   COALESCE(SUM(m.amount) FILTER (WHERE m.type = 'ANULACION' AND o.type = 'RECARGAR'), 0)::text,
+            SELECT COALESCE(SUM(m.amount) FILTER (WHERE m.type = 'RECARGAR' AND m.payment_method IS DISTINCT FROM 'card'), 0)::text,
+                   COALESCE(SUM(m.amount) FILTER (WHERE m.type = 'ANULACION' AND o.type = 'RECARGAR'
+                                                   AND o.payment_method IS DISTINCT FROM 'card'), 0)::text,
                    (COALESCE(SUM(m.amount) FILTER (WHERE m.type = 'COBRAR'), 0)
                     - COALESCE(SUM(m.amount) FILTER (WHERE m.type = 'ANULACION' AND o.type = 'COBRAR'), 0))::text,
+                   COALESCE(SUM(m.amount) FILTER (WHERE m.type = 'RECARGAR' AND m.payment_method = 'card'), 0)::text,
                    COUNT(*), COALESCE(MAX(m.id), %s)
               FROM feria_movement m
               LEFT JOIN feria_movement o ON o.id = m.ref_movement_id
@@ -84,14 +88,15 @@ class FeriaCash(models.Model):
             """,
             [after_id, after_id],
         )
-        recharges, refunds, sales, count, last_id = cr.fetchone()
-        recharges, refunds, sales = Decimal(recharges), Decimal(refunds), Decimal(sales)
+        recharges, refunds, sales, card_recharges, count, last_id = cr.fetchone()
+        recharges, refunds, sales, card_recharges = Decimal(recharges), Decimal(refunds), Decimal(sales), Decimal(card_recharges)
         return {
             'period_start': last[1] if last else False,
             'last_movement_id': last_id,
             'opening_float': opening,
             'recharges': recharges,
             'refunds': refunds,
+            'card_recharges': card_recharges,
             'expected': opening + recharges - refunds,
             'sales': sales,
             'movements_count': count,
@@ -115,6 +120,7 @@ class FeriaCash(models.Model):
             'opening_float': money(self.opening_float),
             'recharges': money(self.recharges),
             'refunds': money(self.refunds),
+            'card_recharges': money(self.card_recharges),
             'expected': money(self.expected),
             'counted': money(self.counted),
             'difference': money(self.difference),
@@ -183,6 +189,7 @@ class FeriaCash(models.Model):
             'opening_float': summary['opening_float'],
             'recharges': summary['recharges'],
             'refunds': summary['refunds'],
+            'card_recharges': summary['card_recharges'],
             'expected': summary['expected'],
             'counted': counted,
             'difference': counted - summary['expected'],

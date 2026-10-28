@@ -1,8 +1,8 @@
 {
-    'name': 'Feria Saldo',
+    'name': 'TpvPlus Saldo',
     'version': '20.0.1.0.0',
     'category': 'Services',
-    'summary': 'Monedero de feria con tarjetas NFC/RFID: saldo en servidor y pantalla de caja de una sola pagina',
+    'summary': 'Monedero TpvPlus con pulseras y tarjetas NFC/RFID: saldo en servidor y pantalla de caja de una sola pagina',
     'description': """
 Fuente de verdad de contactos, codigos, movimientos y saldo para el monedero de feria.
 El saldo es siempre la suma de movimientos confirmados; las tarjetas solo contienen un identificador.

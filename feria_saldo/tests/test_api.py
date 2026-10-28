@@ -29,7 +29,7 @@ class TestApi(HttpCase):
 
     def movement_body(self, **kwargs):
         body = {
-            'uuid': str(uuid.uuid4()), 'code_used': 'AABB11', 'type': 'RECARGAR', 'amount': '25.00',
+            'uuid': str(uuid.uuid4()), 'code_used': 'AABB11', 'type': 'RECARGAR', 'amount': '25.00', 'payment_method': 'cash',
             'created_at_device': fields.Datetime.now().isoformat() + 'Z',
         }
         body.update(kwargs)
@@ -39,7 +39,7 @@ class TestApi(HttpCase):
     def test_page_is_a_kiosk_with_the_four_buttons_and_no_login(self):
         response = self.url_open('/feria')
         self.assertEqual(response.status_code, 200)
-        for label in ('app.js', 'app.css', 'Feria Caja'):
+        for label in ('app.js', 'app.css', 'TpvPlus'):
             self.assertIn(label, response.text)
         self.assertIn("script-src 'self'", response.headers['Content-Security-Policy'])
         # assets carry a version so a browser can never keep running an old screen
@@ -47,8 +47,16 @@ class TestApi(HttpCase):
         self.assertNotIn('__V__', response.text)
         self.assertEqual(self.url_open('/feria_saldo/static/app/app.js?v=1').status_code, 200)
         js = self.url_open('/feria_saldo/static/app/app.js').text
-        for button in ('Cobrar', 'Recargar', 'Ver pedidos', 'Ver saldo', '¿Qué cliente?'):
+        for button in ('Cobrar', 'Recargar', 'Ver saldo y pedidos', '¿Qué cliente?', 'Efectivo', 'Tarjeta'):
             self.assertIn(button, js)
+        self.assertEqual(js.count('data-act="start"'), 3)  # three options on the home screen, not four
+        self.assertNotIn('Cómo paga', js)  # the two payment buttons say it themselves
+        # Caja is the fourth tile of the home screen, no longer a button in the header
+        self.assertIn('data-act="cash" data-needs-online>', js)
+        self.assertNotIn('cashbtn', js)
+        # a recarga is built with coins and notes, not with the numeric keypad
+        for denomination in ('data-act="denom"', 'denom-undo', 'denom-clear'):
+            self.assertIn(denomination, js)
         for entry in ('handleNfcScan', 'NDEFReader', 'nfc-ready'):  # same reader hooks as the TPVPlus Android app
             self.assertIn(entry, js)
         self.assertNotIn("'USD'", js)  # the symbol comes from the server's currency
@@ -75,12 +83,9 @@ class TestApi(HttpCase):
         self.assertEqual((status, body['contact']['name']), (200, 'Marta Lopez'))
         self.assertEqual(self.call('GET', f'/contacts/lookup?contact_id={self.nocard.id}')[1]['error_code'], 'CODE_UNKNOWN')
 
-    def test_search_by_name_only_returns_customers_with_a_card(self):
-        status, body = self.call('GET', '/contacts/search?q=marta')
-        names = [c['name'] for c in body['contacts']]
-        self.assertEqual((status, names), (200, ['Marta Lopez', 'Marta Quiroga']))
-        self.assertEqual(self.call('GET', '/contacts/search?q=m')[1]['contacts'], [])
-        self.assertEqual(self.call('GET', '/contacts/search?q=lopez')[1]['contacts'][0]['id'], self.other.id)
+    def test_there_is_no_search_by_name(self):
+        # customers are identified by their wristband or card only: the endpoint that listed names is gone
+        self.assertEqual(self.url_open(BASE + '/contacts/search?q=marta').status_code, 404)
 
     def test_movements_by_card_and_by_contact(self):
         recharge = self.movement_body()
@@ -178,3 +183,30 @@ class TestApi(HttpCase):
         status, result = self.call('POST', '/cash', {'uuid': str(uuid.uuid4()), 'kind': 'count', 'counted': '0'})
         self.assertEqual(status, 200)  # an empty drawer is a valid count
 
+    def test_a_recharge_says_how_it_is_paid(self):
+        for patch in ({'payment_method': None}, {'payment_method': 'bizum'}, {'payment_method': ''}):
+            status, body = self.call('POST', '/movements', self.movement_body(**patch))
+            self.assertEqual((status, body['error_code']), (400, 'VALIDATION_ERROR'), patch)
+        status, cash = self.call('POST', '/movements', self.movement_body(amount='20.00', payment_method='cash'))
+        status, card = self.call('POST', '/movements', self.movement_body(amount='15.00', payment_method='CARD'))
+        self.assertEqual((cash['payment_method'], card['payment_method']), ('cash', 'card'))
+        status, history = self.call('GET', f'/movements?contact_id={self.partner.id}')
+        self.assertEqual([m['payment_method'] for m in history['movements'][:2]], ['card', 'cash'])
+        # a charge needs no payment method (the wallet pays it)
+        status, charge = self.call('POST', '/movements', self.movement_body(type='COBRAR', amount='5.00', payment_method=None))
+        self.assertEqual((status, charge['payment_method']), (200, None))
+
+    def test_only_cash_recharges_go_into_the_drawer(self):
+        status, base = self.call('GET', '/cash')
+        self.call('POST', '/cash', {'uuid': str(uuid.uuid4()), 'kind': 'close', 'counted': base['expected'], 'kept': '0'})
+        self.call('POST', '/movements', self.movement_body(amount='50.00', payment_method='cash'))
+        self.call('POST', '/movements', self.movement_body(amount='30.00', payment_method='card'))
+        status, summary = self.call('GET', '/cash')
+        self.assertEqual((summary['recharges'], summary['card_recharges'], summary['expected']), ('50.00', '30.00', '50.00'))
+
+    def test_same_uuid_with_another_payment_method_is_a_conflict(self):
+        body = self.movement_body(amount='9.00', payment_method='cash')
+        self.assertEqual(self.call('POST', '/movements', body)[0], 200)
+        self.assertEqual(self.call('POST', '/movements', body)[1]['duplicate'], True)
+        status, result = self.call('POST', '/movements', {**body, 'payment_method': 'card'})
+        self.assertEqual((status, result['error_code']), (409, 'DUPLICATE'))

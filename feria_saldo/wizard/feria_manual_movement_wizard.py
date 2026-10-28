@@ -15,6 +15,10 @@ class FeriaManualMovementWizard(models.TransientModel):
         [('RECARGAR', 'Recarga'), ('AJUSTE', 'Ajuste')], string='Tipo', required=True, default='RECARGAR',
     )
     direction = fields.Selection([('in', 'Suma'), ('out', 'Resta')], string='Sentido del ajuste', default='in')
+    payment_method = fields.Selection(
+        [('cash', 'Efectivo'), ('card', 'Tarjeta')], string='Como paga', default='cash',
+        help='Solo el efectivo entra en la caja.',
+    )
     amount = fields.Char(string='Importe', required=True)
     note = fields.Char(string='Motivo')
 
@@ -29,6 +33,7 @@ class FeriaManualMovementWizard(models.TransientModel):
                 type=self.type,
                 amount=parse_amount(self.amount.replace(',', '.')),
                 direction=self.direction if self.type == 'AJUSTE' else None,
+                payment_method=self.payment_method if self.type == 'RECARGAR' else None,
                 note=self.note,
             )
         except FeriaError as error:

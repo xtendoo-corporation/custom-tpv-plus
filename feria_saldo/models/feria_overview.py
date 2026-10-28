@@ -6,11 +6,13 @@ from odoo import api, fields, models
 
 class FeriaOverview(models.TransientModel):
     _name = 'feria.overview'
-    _description = 'Resumen de la feria'
+    _description = 'Resumen de TpvPlus'
 
     currency_id = fields.Many2one('res.currency', compute='_compute_figures')
     today_recharges = fields.Monetary(string='Recargas de hoy', compute='_compute_figures')
     today_recharges_count = fields.Integer(string='Recargas', compute='_compute_figures')
+    today_card_recharges = fields.Monetary(string='De ellas, con tarjeta', compute='_compute_figures',
+                                           help='No entran en la caja: el dinero entra por el datafono')
     today_charges = fields.Monetary(string='Cobros de hoy', compute='_compute_figures')
     today_charges_count = fields.Integer(string='Cobros', compute='_compute_figures')
     balance_total = fields.Monetary(string='Saldo en circulacion', compute='_compute_figures',
@@ -42,12 +44,13 @@ class FeriaOverview(models.TransientModel):
             SELECT COALESCE(SUM(amount) FILTER (WHERE type = 'RECARGAR'), 0),
                    COUNT(*) FILTER (WHERE type = 'RECARGAR'),
                    COALESCE(SUM(amount) FILTER (WHERE type = 'COBRAR'), 0),
-                   COUNT(*) FILTER (WHERE type = 'COBRAR')
+                   COUNT(*) FILTER (WHERE type = 'COBRAR'),
+                   COALESCE(SUM(amount) FILTER (WHERE type = 'RECARGAR' AND payment_method = 'card'), 0)
               FROM feria_movement WHERE state = 'confirmed' AND received_at >= %s
             """,
             [self._today_start()],
         )
-        recharges, recharges_count, charges, charges_count = cr.fetchone()
+        recharges, recharges_count, charges, charges_count, card_recharges = cr.fetchone()
         cr.execute("SELECT COALESCE(SUM(signed_amount), 0) FROM feria_movement WHERE state = 'confirmed'")
         balance = cr.fetchone()[0]
         cash = self.env['feria.cash'].sudo()
@@ -61,6 +64,7 @@ class FeriaOverview(models.TransientModel):
             overview.currency_id = currency
             overview.today_recharges = recharges
             overview.today_recharges_count = recharges_count
+            overview.today_card_recharges = card_recharges
             overview.today_charges = charges
             overview.today_charges_count = charges_count
             overview.balance_total = balance

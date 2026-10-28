@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="res_groups_privilege_feria" model="res.groups.privilege">
-        <field name="name">Feria</field>
+        <field name="name">TpvPlus</field>
         <field name="sequence">40</field>
         <field name="category_id" ref="base.module_category_services"/>
     </record>

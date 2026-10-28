@@ -1,11 +1,11 @@
 {
-    'name': 'Feria Saldo - Vinculo con el TPV',
+    'name': 'TpvPlus Saldo - Vinculo con el TPV',
     'version': '20.0.1.0.0',
     'category': 'Services',
-    'summary': 'Cada cobro del monedero de feria crea un pedido en el TPV de Odoo con un producto auxiliar',
+    'summary': 'Cada cobro del monedero TpvPlus crea un pedido en el TPV de Odoo con un producto auxiliar',
     'description': """
 Se instala solo cuando estan instalados feria_saldo y el TPV (point_of_sale).
-Se activa en Ajustes > Feria > Vinculo con el TPV de Odoo. Es opcional y nunca bloquea un cobro:
+Se activa en Ajustes > TpvPlus > Vinculo con el TPV de Odoo. Es opcional y nunca bloquea un cobro:
 si el TPV no puede recibir el pedido (por ejemplo no hay sesion abierta), el cobro queda registrado
 y el pedido se reintenta.
 """,

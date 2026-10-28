@@ -122,3 +122,33 @@ class TestCash(FeriaCommon):
             record.unlink()
         with self.assertRaises(UserError):
             self.env['feria.cash'].create({'uuid': str(uuid.uuid4())})
+
+    def test_card_recharges_never_enter_the_drawer(self):
+        self.register('RECARGAR', '40.00')                              # cash
+        card = self.register('RECARGAR', '25.00', payment_method='card')
+        summary = self.cash_summary()
+        self.assertEqual((summary['recharges'], summary['card_recharges'], summary['expected']),
+                         (Decimal('40.00'), Decimal('25.00'), Decimal('40.00')))
+        # giving a card recharge back returns money to the card, not from the drawer
+        self.register('ANULACION', None, ref_uuid=card['uuid'], from_kiosk=False)
+        summary = self.cash_summary()
+        self.assertEqual((summary['refunds'], summary['expected']), (Decimal('0.00'), Decimal('40.00')))
+
+    def test_cancelling_a_cash_recharge_takes_cash_out(self):
+        cash = self.register('RECARGAR', '30.00')
+        self.register('ANULACION', None, ref_uuid=cash['uuid'], from_kiosk=False)
+        summary = self.cash_summary()
+        self.assertEqual((summary['refunds'], summary['expected']), (Decimal('30.00'), Decimal('0.00')))
+
+    def test_movements_without_payment_method_count_as_cash(self):
+        # data from before the payment method existed
+        old = self.register('RECARGAR', '12.00')
+        self.env.cr.execute("UPDATE feria_movement SET payment_method = NULL WHERE uuid = %s", [old['uuid']])
+        self.env.invalidate_all()
+        self.assertEqual(self.cash_summary()['recharges'], Decimal('12.00'))
+
+    def test_a_close_stores_the_card_recharges_for_the_record(self):
+        self.register('RECARGAR', '10.00')
+        self.register('RECARGAR', '7.00', payment_method='card')
+        result = self.close('10.00', '0')
+        self.assertEqual((result['recharges'], result['card_recharges'], result['expected']), ('10.00', '7.00', '10.00'))

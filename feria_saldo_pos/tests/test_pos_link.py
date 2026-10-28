@@ -48,7 +48,7 @@ class TestPosLink(FeriaCommon):
 
     # ------------------------------------------------------------------
     def test_the_auxiliary_product_exists_and_can_be_sold_in_the_pos(self):
-        self.assertEqual((self.product.type, self.product.available_in_pos, self.product.default_code), ('service', True, 'FERIA-COBRO'))
+        self.assertEqual((self.product.type, self.product.available_in_pos, self.product.default_code), ('service', True, 'TPVPLUS-COBRO'))
         self.assertFalse(self.product.taxes_id)
 
     def test_nothing_is_linked_when_the_option_is_off(self):

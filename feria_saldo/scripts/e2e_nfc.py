@@ -9,7 +9,9 @@ import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
 URL = sys.argv[1]
 
@@ -51,7 +53,8 @@ def driver(polyfill):
 
 
 def screen(d):
-    return d.find_element(By.ID, 'app').text.replace('\n', ' | ')
+    # lower case: the design shows some labels in capitals through CSS
+    return d.find_element(By.ID, 'app').text.replace('\n', ' | ').lower()
 
 
 def start(d, action):
@@ -75,43 +78,46 @@ try:
     start(d, 'COBRAR')
     d.execute_script("window.__nfcTriggerRead('stress01')")  # UID as the app sends it
     time.sleep(1.2)
-    check('UID tag opens the customer (COBRAR -> amount screen)', 'Estres' in screen(d) and 'Saldo actual' in screen(d), screen(d)[:90])
+    check('UID tag opens the customer (COBRAR -> amount screen)', 'estres' in screen(d) and 'importe a cobrar' in screen(d), screen(d)[:90])
     d.find_element(By.CSS_SELECTOR, '[data-act="home"]').click()
-    start(d, 'SALDO')
+    start(d, 'CONSULTA')
     d.execute_script("window.__nfcTriggerText('ESTELA01', '04:aa:bb:cc')")  # NDEF text wins over the UID
     time.sleep(1.2)
-    check('NDEF text record is used instead of the UID', 'Estela Prueba' in screen(d), screen(d)[:90])
+    check('NDEF text record is used instead of the UID', 'estela prueba' in screen(d), screen(d)[:90])
     d.find_element(By.CSS_SELECTOR, '[data-act="home"]').click()
     d.execute_script("window.__nfcTriggerRead('stress01')")  # tag while on the home screen
     time.sleep(1)
-    check('a tag on the home screen is ignored', 'COBRAR' in screen(d) and 'Saldo actual' not in screen(d))
-    start(d, 'SALDO')
+    check('a tag on the home screen is ignored', 'cobrar' in screen(d) and 'importe a cobrar' not in screen(d))
+    start(d, 'CONSULTA')
     d.execute_script("window.__nfcTriggerRead('nope9999')")
     time.sleep(1.2)
-    check('unknown tag shows "Cliente no encontrado"', 'Cliente no encontrado' in screen(d), screen(d)[:100])
+    check('unknown tag shows "no reconocida"', 'no reconocida' in screen(d), screen(d)[:100])
 finally:
     d.quit()
 
 # B. Native bridge fallback and keyboard-wedge reader, no NDEFReader available
 d = driver(polyfill=False)
 try:
-    start(d, 'SALDO')
+    start(d, 'CONSULTA')
     d.execute_script("window.handleNfcScan('estela01')")
     time.sleep(1.2)
-    check('window.handleNfcScan opens the customer', 'Estela Prueba' in screen(d), screen(d)[:90])
+    check('window.handleNfcScan opens the customer', 'estela prueba' in screen(d), screen(d)[:90])
     d.find_element(By.CSS_SELECTOR, '[data-act="home"]').click()
-    start(d, 'SALDO')
+    start(d, 'CONSULTA')
     d.execute_script("window.handleNfcScan('estela01'); window.handleNfcScan('estela01');")
     time.sleep(1.5)
-    check('a repeated read within 2 s is ignored (no double lookup)', 'Estela Prueba' in screen(d))
+    check('a repeated read within 2 s is ignored (no double lookup)', 'estela prueba' in screen(d))
     d.find_element(By.CSS_SELECTOR, '[data-act="home"]').click()
-    start(d, 'SALDO')
-    field = d.find_element(By.ID, 'query')
-    for ch in '04:AA-BB':  # a wedge reader types the code character by character, then Enter
-        field.send_keys(ch)
-    field.send_keys('')
+    start(d, 'CONSULTA')
+    ActionChains(d).send_keys('04:AA-BB').send_keys(Keys.ENTER).perform()  # a wedge reader types the code, then Enter
     time.sleep(1.2)
-    check('keyboard-wedge reader text is normalised and not found when unknown', 'Cliente no encontrado' in screen(d))
+    check('keyboard-wedge reader text is captured (no field) and unknown cards are refused', 'no reconocida' in screen(d))
+    d.find_element(By.CSS_SELECTOR, '[data-act="home"]').click()
+    start(d, 'CONSULTA')
+    ActionChains(d).send_keys('ESTELA01').perform()  # readers without the Enter suffix: the end of the burst is enough
+    time.sleep(1.6)
+    check('a fast burst without Enter is also read', 'estela prueba' in screen(d), screen(d)[:80])
+    check('there is no search field on the screen', not d.find_elements(By.CSS_SELECTOR, 'input'))
 finally:
     d.quit()
 
