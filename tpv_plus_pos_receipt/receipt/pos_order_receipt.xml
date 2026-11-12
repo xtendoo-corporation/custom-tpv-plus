@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <template id="pos_order_receipt" inherit_id="point_of_sale.pos_order_receipt">
+        <div name="before-footer" position="before">
+            <div t-if="extra_data.get('ewallets')" class="w-100 text-center mt-2 mb-2" name="ewallet_balance">
+                <div><strong>SALDO MONEDERO ELECTRONICO</strong></div>
+                <t t-foreach="extra_data['ewallets']" t-as="wallet">
+                    <table class="w-100">
+                        <tbody>
+                            <tr>
+                                <td class="text-start w-70">Usado en esta compra:</td>
+                                <td class="text-end w-30 font-monospace">-<t t-out="wallet['amountUsed']" /></td>
+                            </tr>
+                            <tr class="text-bold">
+                                <td class="text-start w-70">Saldo restante:</td>
+                                <td class="text-end w-30 font-monospace"><t t-out="wallet['remainingBalance']" /></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </t>
+                <hr style="border: none; border-top: 2px dashed #000000; margin: 6px 0;" />
+            </div>
+        </div>
+    </template>
+</odoo>

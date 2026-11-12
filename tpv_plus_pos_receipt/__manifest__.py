@@ -12,10 +12,12 @@
     'author': 'TPV Plus',
     'category': 'Point of Sale',
     'depends': ['xtendoo_pos_receipt', 'pos_loyalty'],
+    'data': [
+        'receipt/pos_order_receipt.xml',
+    ],
     'assets': {
         'point_of_sale._assets_pos': [
-            'tpv_plus_pos_receipt/static/src/js/ewallet_receipt.js',
-            'tpv_plus_pos_receipt/static/src/xml/ewallet_receipt.xml',
+            'tpv_plus_pos_receipt/static/src/**/*.js',
         ],
     },
     'installable': True,

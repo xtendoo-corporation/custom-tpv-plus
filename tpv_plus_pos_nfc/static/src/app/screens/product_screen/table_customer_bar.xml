@@ -3,8 +3,8 @@
 
     <!-- "Mesa N · Cliente" bar: always above the order and above the products; on wide screens the products one is hidden by CSS (both panes are visible) -->
     <t t-name="tpv_plus_pos_nfc.TableCustomerBar">
-        <t t-set="tpvOrder" t-value="pos.getOrder()"/>
-        <div t-if="pos.config.module_pos_restaurant and tpvOrder"
+        <t t-set="tpvOrder" t-value="this.pos.getOrder()"/>
+        <div t-if="this.pos.config.module_pos_restaurant and tpvOrder"
              class="tpv-table-bar d-flex align-items-center gap-3 px-3 py-2">
             <div t-if="tpvOrder.table_id" class="tpv-table-bar-table flex-shrink-0">
                 <small>Mesa</small>

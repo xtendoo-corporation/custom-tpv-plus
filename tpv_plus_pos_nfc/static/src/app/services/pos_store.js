@@ -29,7 +29,7 @@ patch(PosStore.prototype, {
      * and the extra view only confuses the cashier.
      */
     navigate(routeName) {
-        const fromPayment = this.router.state.current === "PaymentScreen";
+        const fromPayment = this.router.currentScreen() === "PaymentScreen";
         const result = super.navigate(...arguments);
         if (fromPayment && routeName === "ProductScreen") {
             this.mobile_pane = "right";
@@ -54,7 +54,7 @@ patch(PosStore.prototype, {
         this._tpvNfcLastScan = { value, ts: now };
 
         if (
-            this.router.state.current !== "ProductScreen" ||
+            this.router.currentScreen() !== "ProductScreen" ||
             document.body.classList.contains("modal-open")
         ) {
             this.notification.add(

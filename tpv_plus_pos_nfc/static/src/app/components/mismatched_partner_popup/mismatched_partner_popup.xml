@@ -26,7 +26,7 @@
                         </div>
                         <div class="flex-grow-1 overflow-hidden">
                             <small class="text-muted d-block fw-bold">CLIENTE SELECCIONADO</small>
-                            <span class="fs-4 text-truncate d-block fw-bold text-dark" t-esc="props.currentPartner.name" />
+                            <span class="fs-4 text-truncate d-block fw-bold text-dark" t-out="this.props.currentPartner.name" />
                         </div>
                     </div>
 
@@ -42,7 +42,7 @@
                         </div>
                         <div class="flex-grow-1 overflow-hidden">
                             <small class="text-muted d-block fw-bolder" style="letter-spacing: 1px;">TARJETA LEÍDA</small>
-                            <span class="fs-3 text-truncate d-block fw-bolder text-dark" t-esc="props.scannedPartner.name" />
+                            <span class="fs-3 text-truncate d-block fw-bolder text-dark" t-out="this.props.scannedPartner.name" />
                         </div>
                     </div>
                 </div>
@@ -54,10 +54,10 @@
 
             <t t-set-slot="footer">
                 <div class="d-flex w-100 gap-3 p-1">
-                    <button class="btn btn-outline-secondary btn-lg flex-fill py-3 fs-4" t-on-click="cancel">
+                    <button class="btn btn-outline-secondary btn-lg flex-fill py-3 fs-4" t-on-click="this.cancel">
                         <i class="fa fa-times me-2" />CANCELAR
                     </button>
-                    <button class="btn btn-secondary btn-lg flex-fill py-3 fs-3 fw-bold shadow-sm" t-on-click="confirmKeep">
+                    <button class="btn btn-secondary btn-lg flex-fill py-3 fs-3 fw-bold shadow-sm" t-on-click="this.confirmKeep">
                         <i class="fa fa-credit-card me-2" />SÍ, COBRAR SIN CAMBIAR
                     </button>
                 </div>
