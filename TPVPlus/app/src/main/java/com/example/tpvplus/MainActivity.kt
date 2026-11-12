@@ -43,6 +43,8 @@ class MainActivity : ComponentActivity() {
 
     // Dirección del servidor de la caja (se configura en el propio dispositivo)
     private var serverUrl: String? = null
+    // true si la carga de la página principal ha fallado (red, SSL o HTTP >= 400)
+    private var mainFrameFailed = false
     private var rootView: FrameLayout? = null
     private var setupPanel: View? = null
     private var cornerTaps = 0
@@ -227,12 +229,25 @@ class MainActivity : ComponentActivity() {
 
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
+                    mainFrameFailed = false
                     view?.evaluateJavascript(NFC_POLYFILL, null)
                 }
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
                     view?.evaluateJavascript(NFC_POLYFILL, null)
+
+                    // Solo se recuerda la dirección cuando de verdad ha cargado bien
+                    val current = serverUrl
+                    if (current != null && isTpvHost(url?.let { Uri.parse(it).host })) {
+                        // Chromium puede avisar del error HTTP justo después de terminar la carga:
+                        // se espera un instante y no se guarda si ya se ha mostrado el error.
+                        view?.postDelayed({
+                            if (!mainFrameFailed && setupPanel == null && serverUrl == current) {
+                                ServerConfig.save(this@MainActivity, current)
+                            }
+                        }, 500)
+                    }
 
                     val isTpv = isTpvHost(url?.let { Uri.parse(it).host })
                     if (isTpv) {
@@ -251,11 +266,7 @@ class MainActivity : ComponentActivity() {
                         handler?.proceed()
                     } else {
                         handler?.cancel()
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Conexión no segura bloqueada (certificado SSL no válido)",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        failMainFrame("Conexión no segura bloqueada: el certificado SSL de ${serverUrl ?: "el servidor"} no es válido.\nUsa una dirección http:// o un certificado válido.")
                     }
                 }
 
@@ -268,7 +279,7 @@ class MainActivity : ComponentActivity() {
                     val desc = error?.description ?: "sin descripción"
                     android.util.Log.e("WebViewError", "Error cargando recurso: $url - Error: $desc")
                     if (request?.isForMainFrame == true) {
-                        showSetup("No se pudo conectar con ${serverUrl ?: url}.\nRevisa la dirección y que estés en la misma Wi-Fi que el servidor.")
+                        failMainFrame("No se pudo conectar con ${serverUrl ?: url}.\nRevisa la dirección, el puerto y que el servidor sea accesible desde esta red.")
                     }
                 }
 
@@ -280,6 +291,9 @@ class MainActivity : ComponentActivity() {
                     val url = request?.url?.toString() ?: "desconocida"
                     val status = errorResponse?.statusCode ?: 0
                     android.util.Log.e("WebViewError", "Error HTTP: $url - Código: $status")
+                    if (request?.isForMainFrame == true && status >= 400) {
+                        failMainFrame("El servidor ${serverUrl ?: url} respondió con error $status.\nRevisa la dirección y el puerto.")
+                    }
                 }
             }
 
@@ -441,6 +455,13 @@ class MainActivity : ComponentActivity() {
         setupPanel = null
     }
 
+    /** Falla la carga principal: se olvida la dirección guardada y se vuelve a pedir con el error. */
+    private fun failMainFrame(message: String) {
+        mainFrameFailed = true
+        ServerConfig.clear(this)
+        showSetup(message)
+    }
+
     /** Pantalla para escribir la IP del servidor; también sirve de "Reintentar" si falla la conexión. */
     private fun showSetup(message: String? = null) {
         val root = rootView ?: return
@@ -484,7 +505,6 @@ class MainActivity : ComponentActivity() {
                     error.visibility = View.VISIBLE
                     return@setOnClickListener
                 }
-                ServerConfig.save(this@MainActivity, url)
                 serverUrl = url
                 hideSetup()
                 webView?.apply {
