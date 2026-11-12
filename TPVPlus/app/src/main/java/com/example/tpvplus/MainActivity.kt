@@ -482,7 +482,9 @@ class MainActivity : ComponentActivity() {
             setPadding(0, px(8), 0, px(16))
         }
         val input = EditText(this).apply {
-            setText(serverUrl ?: "")
+            // Tras un error el campo sale vacío: no arrastrar la dirección que ha fallado
+            setText(if (message.isNullOrEmpty()) serverUrl ?: "" else "")
+            setSelectAllOnFocus(true)
             hint = "192.168.0.113:8080"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             setSingleLine(true)
