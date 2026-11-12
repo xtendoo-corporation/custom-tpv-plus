@@ -143,11 +143,17 @@ class FeriaApi(http.Controller):
 
     @staticmethod
     def _contact_payload(partner, code_record):
+        # A code with individual balance has its own wallet; any other way in uses the contact's shared one.
+        individual = bool(code_record and not code_record.shared)
         return {
             'contact': {'id': partner.id, 'name': partner.name, 'ref': partner.ref or None},
-            'balance': _money(partner.feria_balance),
+            'balance': _money(code_record.balance if individual else partner.feria_balance),
             'currency': partner.feria_currency_id.name,
-            'codes': [{'code': c.code, 'kind': c.kind, 'blocked': c.blocked} for c in partner.feria_code_ids],
+            'wallet': {'shared': not individual, 'code': code_record.code if individual else None},
+            'scanned': {'code': code_record.code, 'note': code_record.note or None} if code_record else None,
+            'codes': [{
+                'code': c.code, 'kind': c.kind, 'blocked': c.blocked, 'shared': c.shared, 'note': c.note or None,
+            } for c in partner.feria_code_ids],
             'blocked': bool(partner.feria_blocked or (code_record and code_record.blocked)),
         }
 
@@ -156,7 +162,7 @@ class FeriaApi(http.Controller):
     # ------------------------------------------------------------------
     @http.route('/feria/api/v1/movements', methods=['GET', 'POST'], **ROUTE)
     @endpoint()
-    def movements(self, env, contact_id=None, limit=50, **kwargs):
+    def movements(self, env, contact_id=None, limit=50, code=None, **kwargs):
         if request.httprequest.method == 'POST':
             return self._create_movement(env)
         try:
@@ -164,7 +170,16 @@ class FeriaApi(http.Controller):
             limit = max(1, min(int(limit), HISTORY_MAX))
         except (TypeError, ValueError):
             raise FeriaError('VALIDATION_ERROR', 'contact_id and limit must be integers') from None
-        movements = env['feria.movement'].search([('partner_id', '=', partner_id)], limit=limit)
+        # Only the wallet of the card in use: its own balance if individual, else the shared one
+        wallet = env['feria.code']
+        if code:
+            record = FeriaApi._find_code(env, code)
+            if record.partner_id.id != partner_id:
+                raise FeriaError('VALIDATION_ERROR', 'contact_id does not match the code')
+            wallet = record if not record.shared else wallet
+        movements = env['feria.movement'].search(
+            [('partner_id', '=', partner_id), ('wallet_code_id', '=', wallet.id or False)], limit=limit,
+        )
         return _respond({'movements': [m._to_api() for m in movements]})
 
     @staticmethod

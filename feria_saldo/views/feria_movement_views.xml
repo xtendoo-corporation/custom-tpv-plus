@@ -37,6 +37,7 @@
                             <field name="uuid"/>
                             <field name="partner_id"/>
                             <field name="code_used"/>
+                            <field name="wallet_code_id"/>
                             <field name="type"/>
                             <field name="payment_method" invisible="type not in ('RECARGAR', 'ANULACION')"/>
                             <field name="currency_id" invisible="1"/>

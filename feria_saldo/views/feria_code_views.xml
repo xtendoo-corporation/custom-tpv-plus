@@ -9,6 +9,9 @@
                 <field name="code"/>
                 <field name="kind"/>
                 <field name="blocked"/>
+                <field name="shared"/>
+                <field name="balance" invisible="shared"/>
+                <field name="currency_id" column_invisible="True"/>
                 <field name="note"/>
                 <field name="active" column_invisible="True"/>
             </list>
@@ -23,6 +26,7 @@
                 <field name="code"/>
                 <field name="partner_id"/>
                 <filter name="blocked" string="Bloqueados" domain="[('blocked', '=', True)]"/>
+                <filter name="individual" string="Saldo individual" domain="[('shared', '=', False)]"/>
                 <filter name="archived" string="Archivados" domain="[('active', '=', False)]"/>
                 <group>
                     <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>

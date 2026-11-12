@@ -388,10 +388,16 @@
     };
 
     // Banner under the header while a customer is identified: the name and the balance, same size.
+    // Name of the customer, followed by the note of the scanned card in brackets (if it has one).
+    function displayName(c) {
+        const note = c.scanned && c.scanned.note;
+        return note ? `${c.contact.name} (${note})` : c.contact.name;
+    }
+
     function customerBanner(c) {
         return `<section class="customer-bar">
             <span class="avatar">${esc(initials(c.contact.name))}</span>
-            <div class="who"><div class="name">${esc(c.contact.name)}</div>${c.blocked ? '<span class="tag">BLOQUEADA</span>' : ''}</div>
+            <div class="who"><div class="name">${esc(displayName(c))}</div>${c.blocked ? '<span class="tag">BLOQUEADA</span>' : ''}</div>
             <div class="saldo">${money(c.balance)}</div></section>`;
     }
 
@@ -428,7 +434,7 @@
         if (data.currency) { S.currency = currencySymbol(data.currency); }
         if (S.action === 'CONSULTA') {
             // "pedidos" are the operations stored by this module (cobros and recargas), newest first
-            const history = await api('GET', `/movements?contact_id=${data.contact.id}&limit=30`);
+            const history = await api('GET', `/movements?contact_id=${data.contact.id}&limit=30${by && by.code ? `&code=${encodeURIComponent(by.code)}` : ''}`);
             S.orders = history.data.movements || [];
             go('consulta');
         } else {
@@ -496,7 +502,7 @@
         }
         const op = {
             uuid: uuid4(),
-            contactName: S.contact.contact.name,
+            contactName: displayName(S.contact),
             body: { type: S.action, amount, created_at_device: new Date().toISOString(), ...S.by, ...(S.action === 'RECARGAR' ? { payment_method: pay } : {}) },
         };
         op.body.uuid = op.uuid;

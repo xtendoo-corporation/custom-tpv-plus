@@ -9,7 +9,7 @@ class ResPartner(models.Model):
     feria_blocked = fields.Boolean(string='Bloqueado en TpvPlus', copy=False)
     feria_currency_id = fields.Many2one('res.currency', compute='_compute_feria_currency_id')
     feria_balance = fields.Monetary(
-        string='Saldo TpvPlus', currency_field='feria_currency_id',
+        string='Saldo TpvPlus', help='Saldo compartido: no incluye los codigos con saldo individual.', currency_field='feria_currency_id',
         compute='_compute_feria_balance', store=True, readonly=True, copy=False,
     )
 
@@ -18,13 +18,13 @@ class ResPartner(models.Model):
         for partner in self:
             partner.feria_currency_id = currency
 
-    @api.depends('feria_movement_ids.signed_amount', 'feria_movement_ids.state')
+    @api.depends('feria_movement_ids.signed_amount', 'feria_movement_ids.state', 'feria_movement_ids.wallet_code_id')
     def _compute_feria_balance(self):
-        self.env['feria.movement'].flush_model(['partner_id', 'signed_amount', 'state'])
+        self.env['feria.movement'].flush_model(['partner_id', 'signed_amount', 'state', 'wallet_code_id'])
         totals = {
             partner.id: total
             for partner, total in self.env['feria.movement']._read_group(
-                [('partner_id', 'in', self.ids), ('state', '=', 'confirmed')],
+                [('partner_id', 'in', self.ids), ('state', '=', 'confirmed'), ('wallet_code_id', '=', False)],
                 ['partner_id'], ['signed_amount:sum'],
             )
         }

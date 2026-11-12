@@ -24,6 +24,9 @@
                             <field name="code"/>
                             <field name="kind"/>
                             <field name="blocked"/>
+                            <field name="shared"/>
+                            <field name="balance" readonly="1" invisible="shared"/>
+                            <field name="currency_id" column_invisible="1"/>
                             <field name="note"/>
                         </list>
                     </field>

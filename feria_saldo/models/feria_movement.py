@@ -28,6 +28,10 @@ class FeriaMovement(models.Model):
     uuid = fields.Char(string='UUID', required=True, readonly=True, copy=False, index=True)
     partner_id = fields.Many2one('res.partner', string='Contacto', required=True, readonly=True, index=True, ondelete='restrict')
     code_used = fields.Char(string='Codigo usado', readonly=True)
+    wallet_code_id = fields.Many2one(
+        'feria.code', string='Saldo individual de', readonly=True, index=True, ondelete='restrict',
+        help='Vacio: el movimiento es del saldo compartido del contacto.',
+    )
     type = fields.Selection(
         [
             ('COBRAR', 'Cobrar'),
@@ -94,7 +98,7 @@ class FeriaMovement(models.Model):
         return currency or self.env.company.currency_id
 
     @staticmethod
-    def _hash_of(prev, uuid, partner_id, type_, amount, created_at_device, sequence, payment_method=None):
+    def _hash_of(prev, uuid, partner_id, type_, amount, created_at_device, sequence, payment_method=None, wallet_code_id=None):
         parts = [
             prev, uuid, partner_id, type_, _dec(amount),
             created_at_device.strftime('%Y-%m-%dT%H:%M:%S') if created_at_device else '',
@@ -102,13 +106,15 @@ class FeriaMovement(models.Model):
         ]
         if payment_method:  # added later: movements without it keep the hash they always had
             parts.append(payment_method)
+        if wallet_code_id:  # idem: only movements of an individual wallet carry it
+            parts.append(f'wallet:{wallet_code_id}')
         return sha256_hex(*parts)
 
     def _compute_hash(self, prev):
         self.ensure_one()
         return self._hash_of(
             prev, self.uuid, self.partner_id.id, self.type, self.amount,
-            self.created_at_device, self.sequence, self.payment_method,
+            self.created_at_device, self.sequence, self.payment_method, self.wallet_code_id.id,
         )
 
     def _to_api(self):
@@ -123,6 +129,7 @@ class FeriaMovement(models.Model):
             'currency': self.currency_id.name,
             'contact_id': self.partner_id.id,
             'code_used': self.code_used or None,
+            'wallet': self.wallet_code_id.code or None,
             'created_at_device': self.created_at_device and self.created_at_device.isoformat() + 'Z' or None,
             'received_at': self.received_at.isoformat() + 'Z',
             'sequence': self.sequence or None,
@@ -138,7 +145,7 @@ class FeriaMovement(models.Model):
     @api.model
     def _feria_register(self, *, uuid, partner_id, type, amount=None, code_used=None,
                         created_at_device=None, sequence=None, ref_uuid=None,
-                        note=None, direction=None, from_kiosk=False, payment_method=None):
+                        note=None, direction=None, from_kiosk=False, payment_method=None, wallet_code_id=None):
         """Register one movement, serialized per contact and durable on return.
 
         Runs on its own READ COMMITTED transaction: takes the chain lock, then the contact
@@ -151,6 +158,7 @@ class FeriaMovement(models.Model):
                 uuid=uuid, partner_id=partner_id, type=type, amount=amount, code_used=code_used,
                 created_at_device=created_at_device, sequence=sequence, ref_uuid=ref_uuid,
                 note=note, direction=direction, from_kiosk=from_kiosk, payment_method=payment_method,
+                wallet_code_id=wallet_code_id,
             )
             result = movement._to_api()
         result['duplicate'] = duplicate
@@ -158,7 +166,8 @@ class FeriaMovement(models.Model):
 
     @api.model
     def _feria_register_locked(self, *, uuid, partner_id, type, amount, code_used,
-                               created_at_device, sequence, ref_uuid, note, direction, from_kiosk, payment_method=None):
+                               created_at_device, sequence, ref_uuid, note, direction, from_kiosk, payment_method=None,
+                               wallet_code_id=None):
         cr = self.env.cr
         if not isinstance(uuid, str) or not UUID_RE.match(uuid):
             raise FeriaError('VALIDATION_ERROR', 'uuid must be a lowercase RFC 4122 uuid')
@@ -212,6 +221,17 @@ class FeriaMovement(models.Model):
             if code.blocked:
                 raise FeriaError('CODE_BLOCKED', 'This code is blocked', 403)
 
+        # Wallet: a code with individual balance spends/receives on its own; anything else (a shared
+        # code, a contact without code, back office) uses the contact's shared balance.
+        wallet = self.env['feria.code']
+        if type != 'ANULACION':
+            if code and not code.shared:
+                wallet = code
+            if wallet_code_id:
+                wallet = self.env['feria.code'].browse(wallet_code_id).exists()
+                if not wallet or wallet.partner_id != partner or wallet.shared:
+                    raise FeriaError('VALIDATION_ERROR', 'wallet_code_id is not an individual-balance code of this contact')
+
         if from_kiosk:
             limit = Decimal(str(self._feria_param('max_amount', 0) or 0))
             if limit > 0 and amount > limit:
@@ -231,14 +251,16 @@ class FeriaMovement(models.Model):
             amount = _dec(original.amount)
             signed = -_dec(original.signed_amount)
             payment_method = original.payment_method or ('cash' if original.type == 'RECARGAR' else None)
+            wallet = original.wallet_code_id  # a cancellation reverses the same wallet
         elif type == 'AJUSTE':
             signed = amount if direction == 'in' else -amount
         else:
             signed = amount * SIGN[type]
 
         cr.execute(
-            "SELECT COALESCE(SUM(signed_amount), 0)::text FROM feria_movement WHERE partner_id = %s AND state = 'confirmed'",
-            [partner_id],
+            "SELECT COALESCE(SUM(signed_amount), 0)::text FROM feria_movement"
+            " WHERE partner_id = %s AND state = 'confirmed' AND wallet_code_id IS NOT DISTINCT FROM %s",
+            [partner_id, wallet.id or None],
         )
         balance_before = Decimal(cr.fetchone()[0])
         if balance_before + signed < 0:
@@ -266,6 +288,7 @@ class FeriaMovement(models.Model):
             'uuid': uuid,
             'partner_id': partner_id,
             'code_used': code.code if code else False,
+            'wallet_code_id': wallet.id or False,
             'type': type,
             'currency_id': self._feria_currency().id,
             'amount': amount,
@@ -274,7 +297,7 @@ class FeriaMovement(models.Model):
             'created_at_device': created_at_device or False,
             'sequence': sequence,
             'hash_prev': hash_prev,
-            'hash': self._hash_of(hash_prev, uuid, partner_id, type, amount, created_at_device, sequence, payment_method),
+            'hash': self._hash_of(hash_prev, uuid, partner_id, type, amount, created_at_device, sequence, payment_method, wallet.id),
             'payment_method': payment_method or False,
             'ref_movement_id': original.id or False,
             'note': note or False,

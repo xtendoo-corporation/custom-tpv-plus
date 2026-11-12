@@ -7,6 +7,7 @@
             <form>
                 <group>
                     <field name="partner_id" readonly="1"/>
+                    <field name="wallet_code_id" placeholder="Saldo compartido del contacto" options="{'no_create': True}"/>
                     <field name="type"/>
                     <field name="direction" invisible="type != 'AJUSTE'" required="type == 'AJUSTE'"/>
                     <field name="payment_method" invisible="type != 'RECARGAR'" required="type == 'RECARGAR'" widget="radio"/>

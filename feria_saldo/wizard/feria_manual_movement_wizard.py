@@ -19,6 +19,10 @@ class FeriaManualMovementWizard(models.TransientModel):
         [('cash', 'Efectivo'), ('card', 'Tarjeta')], string='Como paga', default='cash',
         help='Solo el efectivo entra en la caja.',
     )
+    wallet_code_id = fields.Many2one(
+        'feria.code', string='Saldo de', domain="[('partner_id', '=', partner_id), ('shared', '=', False)]",
+        help='Vacio: saldo compartido del contacto. Elija un codigo para usar su saldo individual.',
+    )
     amount = fields.Char(string='Importe', required=True)
     note = fields.Char(string='Motivo')
 
@@ -35,6 +39,7 @@ class FeriaManualMovementWizard(models.TransientModel):
                 direction=self.direction if self.type == 'AJUSTE' else None,
                 payment_method=self.payment_method if self.type == 'RECARGAR' else None,
                 note=self.note,
+                wallet_code_id=self.wallet_code_id.id or None,
             )
         except FeriaError as error:
             raise UserError(error.message) from error
