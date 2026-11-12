@@ -7,27 +7,41 @@
         <field name="arch" type="xml">
             <page name="internal_notes" position="after">
                 <page name="feria" string="TpvPlus" groups="feria_saldo.group_feria_user">
+                    <field name="feria_currency_id" invisible="1"/>
                     <group>
-                        <group>
-                            <field name="feria_currency_id" invisible="1"/>
-                            <field name="feria_balance"/>
-                            <field name="feria_blocked" groups="feria_saldo.group_feria_manager"/>
+                        <group string="Saldo compartido">
+                            <label for="feria_balance" string="Disponible"/>
+                            <field name="feria_balance" nolabel="1" class="fs-3 fw-bold text-success"/>
+                            <field name="feria_blocked" string="Bloquear contacto" widget="boolean_toggle"
+                                   groups="feria_saldo.group_feria_manager"/>
                         </group>
-                        <group>
-                            <button name="action_open_feria_topup" type="object" string="Recarga manual"
-                                    class="btn-primary" groups="feria_saldo.group_feria_manager"/>
-                            <button name="action_open_feria_statement" type="object" string="Extracto"/>
+                        <group string="Acciones">
+                            <div class="d-flex flex-wrap gap-2">
+                                <button name="action_open_feria_topup" type="object" string="Recarga manual"
+                                        class="btn-primary" groups="feria_saldo.group_feria_manager"/>
+                                <button name="action_open_feria_statement" type="object" string="Extracto"
+                                        class="btn-secondary"/>
+                            </div>
                         </group>
                     </group>
-                    <field name="feria_code_ids" readonly="not id">
-                        <list editable="bottom">
-                            <field name="code"/>
-                            <field name="kind"/>
-                            <field name="blocked"/>
-                            <field name="shared"/>
-                            <field name="balance" readonly="1" invisible="shared"/>
+                    <separator string="Pulseras y tarjetas"/>
+                    <div class="text-muted mb-2">
+                        <b>Compartido</b>: el código usa el saldo del contacto, común a todos sus códigos compartidos.
+                        Sin marcar, el código tiene <b>saldo propio</b>. La <b>nota</b> se muestra entre paréntesis
+                        junto al nombre al escanearlo.
+                    </div>
+                    <field name="feria_code_ids" readonly="not id" nolabel="1">
+                        <list editable="bottom" decoration-danger="blocked">
+                            <field name="code" string="Código" class="fw-bold" width="140px"/>
+                            <field name="kind" string="Tipo" widget="badge" width="90px"
+                                   decoration-info="kind in ('nfc', 'qr')" decoration-success="kind == 'rfid'"
+                                   decoration-muted="kind == 'manual'"/>
+                            <field name="shared" string="Compartido" widget="boolean_toggle" width="110px"/>
+                            <field name="balance" string="Saldo propio" invisible="shared" width="130px"
+                                   decoration-success="balance &gt; 0" decoration-muted="balance == 0"/>
                             <field name="currency_id" column_invisible="1"/>
-                            <field name="note"/>
+                            <field name="blocked" string="Bloqueado" width="100px"/>
+                            <field name="note" string="Nota" placeholder="Ej.: Hijo, Pedro"/>
                         </list>
                     </field>
                 </page>
