@@ -20,6 +20,11 @@ class ResConfigSettings(models.TransientModel):
         help='Redes (CIDR) separadas por comas desde las que se puede usar la pantalla de caja, '
              'por ejemplo 192.168.1.0/24. Vacio = cualquiera.',
     )
+    feria_topup_password = fields.Char(
+        string='Contraseña de recarga', config_parameter='feria.topup_password',
+        help='Si se rellena, la pantalla de caja la pide al pulsar Recargar y el servidor no admite recargas sin ella. '
+             'Vacio = sin contraseña.',
+    )
 
     def set_values(self):
         if self.feria_offline_mode == 'limited':

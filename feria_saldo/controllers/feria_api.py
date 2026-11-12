@@ -1,4 +1,5 @@
 import functools
+import hmac
 import logging
 from datetime import UTC, datetime
 
@@ -78,6 +79,19 @@ def endpoint(network_check=True):
     return decorator
 
 
+def topup_password_required(env):
+    return bool(env['ir.config_parameter'].sudo().get_str('feria.topup_password'))
+
+
+def check_topup_password(env, supplied):
+    """Recargas need the password set in Ajustes (when there is one). Constant-time comparison."""
+    expected = env['ir.config_parameter'].sudo().get_str('feria.topup_password')
+    if not expected:
+        return
+    if not isinstance(supplied, str) or not hmac.compare_digest(supplied.encode(), expected.encode()):
+        raise FeriaError('PASSWORD_WRONG', 'Contraseña de recarga incorrecta', 403)
+
+
 ROUTE = {'type': 'http', 'auth': 'none', 'csrf': False, 'save_session': False, 'readonly': False}
 
 
@@ -109,7 +123,15 @@ class FeriaApi(http.Controller):
             'offline_mode': 'disabled',
             'server_time': _server_time(),
             'max_amount': movement._feria_param('max_amount', '0'),
+            'topup_password_required': topup_password_required(env),
         })
+
+    @http.route('/feria/api/v1/topup/verify', methods=['POST'], **ROUTE)
+    @endpoint()
+    def topup_verify(self, env):
+        """The kiosk asks for the recarga password before showing the customer screen."""
+        check_topup_password(env, _body().get('password'))
+        return _respond({'ok': True, 'required': topup_password_required(env)})
 
     # ------------------------------------------------------------------
     # Customers
@@ -187,6 +209,10 @@ class FeriaApi(http.Controller):
         data = _body()
         movement_type = str(data.get('type') or '').upper()
         amount = parse_amount(data.get('amount'))
+        stored = isinstance(data.get('uuid'), str) and env['feria.movement'].search_count([('uuid', '=', data['uuid'])])
+        if movement_type == 'RECARGAR' and not stored:
+            # a replay of a recarga that is already stored must keep answering, so only new ones need it
+            check_topup_password(env, data.get('topup_password'))
         code = data.get('code_used') or data.get('code')
         if code:
             partner_id = FeriaApi._find_code(env, code).partner_id.id

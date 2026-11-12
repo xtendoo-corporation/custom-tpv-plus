@@ -3,3 +3,4 @@ from . import test_cash
 from . import test_overview
 from . import test_api
 from . import test_wallet
+from . import test_topup_password

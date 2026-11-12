@@ -93,6 +93,10 @@ button { font-family: inherit; }
 .eyebrow { margin: 0; text-align: center; color: var(--brand); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: clamp(13px, 1.8vw, 16px); }
 .title { font-size: clamp(26px, 5vw, 44px); font-weight: 800; letter-spacing: -.02em; text-align: center; margin: 0; color: var(--ink); line-height: 1.1; }
 .sub { text-align: center; color: var(--muted); font-size: clamp(15px, 2.2vw, 19px); margin: 0; line-height: 1.4; font-weight: 500; }
+.pass-input { width: min(100%, 420px); box-sizing: border-box; padding: 18px 20px; font: inherit; font-size: clamp(22px, 4vw, 30px);
+    text-align: center; letter-spacing: .25em; color: var(--ink); background: var(--card); border: 2px solid var(--line);
+    border-radius: 18px; outline: none; }
+.pass-input:focus { border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
 .sub b { color: var(--ink); font-weight: 700; }
 .err { color: var(--bad) !important; font-weight: 700; }
 .card { background: var(--card); border-radius: var(--radius); padding: clamp(14px, 2vw, 20px); box-shadow: var(--shadow); border: 1px solid var(--line); }

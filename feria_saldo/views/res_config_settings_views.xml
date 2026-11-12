@@ -21,6 +21,9 @@
                         <setting string="Redes permitidas" help="Redes CIDR (192.168.1.0/24) desde las que se puede usar la pantalla de caja. Vacio = cualquiera">
                             <field name="feria_allowed_networks"/>
                         </setting>
+                        <setting string="Contraseña de recarga" help="Se pide en la pantalla de caja al pulsar Recargar. Vacio = no se pide">
+                            <field name="feria_topup_password" password="True" autocomplete="new-password"/>
+                        </setting>
                     </block>
                 </app>
             </xpath>

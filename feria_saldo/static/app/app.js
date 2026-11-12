@@ -5,7 +5,7 @@
     const INFLIGHT_KEY = 'feria_inflight';
     const CASH_KEY = 'feria_cash_inflight';
     const SCREEN_IDLE_MS = 60 * 1000;
-    const TRANSIENT = ['customer', 'amount', 'consulta', 'result', 'cash', 'cash_count', 'cash_keep', 'cash_confirm'];
+    const TRANSIENT = ['topup_pass', 'customer', 'amount', 'consulta', 'result', 'cash', 'cash_count', 'cash_keep', 'cash_confirm'];
     const $app = document.getElementById('app');
     const $banner = document.getElementById('banner');
 
@@ -33,6 +33,7 @@
         result: null,
         waitSince: 0,
         busy: false,
+        topupPass: '', // recarga password, kept only in memory (never stored) until the operation ends
     };
 
     let lastCard = { value: '', at: 0 }; // last card read on the current screen, to drop double reads
@@ -154,7 +155,7 @@
     }
 
     function home() {
-        Object.assign(S, { action: null, query: '', contact: null, by: null, orders: [], cash: null, counted: '', kept: '', amount: '', taps: [], message: '', result: null, busy: false });
+        Object.assign(S, { action: null, query: '', contact: null, by: null, orders: [], cash: null, counted: '', kept: '', amount: '', taps: [], message: '', result: null, busy: false, topupPass: '' });
         go('home');
     }
 
@@ -224,6 +225,16 @@
                     <span class="tile-text"><b>Caja</b><small>Contar y cerrar la caja del dia</small></span>
                 </button>
             </div>`;
+        },
+
+        topup_pass() {
+            return `${bar()}<div class="screen scan">
+                <p class="eyebrow">Recargar</p>
+                <h1 class="scan-title">Contraseña de recarga</h1>
+                <input id="topupInput" class="pass-input" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Contraseña de recarga">
+                ${errLine()}
+                <div class="row"><button class="btn ghost" data-act="home">Cancelar</button>
+                    <button class="btn brand" data-act="topup-ok" data-needs-online>Continuar</button></div></div>`;
         },
 
         customer() {
@@ -425,6 +436,38 @@
         requestAnimationFrame(tick);
     }
 
+    // ---------- recarga password ----------
+    // Recargar asks for the password set in Ajustes (when there is one). The server checks it again on
+    // every new recarga, so this screen is only the polite way to ask for it.
+    async function startRecarga() {
+        try {
+            const { data } = await api('GET', '/config');
+            if (data.topup_password_required) {
+                S.topupPass = ''; S.message = '';
+                go('topup_pass');
+                setTimeout(() => document.getElementById('topupInput')?.focus(), 50);
+                return;
+            }
+        } catch { /* offline: the banner says so; the server will decide when the operation is sent */ }
+        go('customer'); startNfc();
+    }
+
+    async function verifyTopup() {
+        const input = document.getElementById('topupInput');
+        const password = input ? input.value : '';
+        if (!password || S.busy) { S.message = 'Escribe la contraseña'; render(); return; }
+        S.busy = true; S.message = '';
+        try {
+            const { status, data } = await api('POST', '/topup/verify', { password });
+            if (status === 200) { S.topupPass = password; S.busy = false; go('customer'); startNfc(); return; }
+            S.message = 'Contraseña incorrecta';
+            feedback(false);
+        } catch { S.message = 'Sin conexión: inténtelo de nuevo'; }
+        S.busy = false;
+        render();
+        setTimeout(() => document.getElementById('topupInput')?.focus(), 50);
+    }
+
     // ---------- finding the customer ----------
     async function showCustomer(path, by) {
         const { status, data } = await api('GET', path);
@@ -505,9 +548,12 @@
             contactName: displayName(S.contact),
             body: { type: S.action, amount, created_at_device: new Date().toISOString(), ...S.by, ...(S.action === 'RECARGAR' ? { payment_method: pay } : {}) },
         };
+        if (S.action === 'RECARGAR' && S.topupPass) { op.body.topup_password = S.topupPass; }
         op.body.uuid = op.uuid;
         // persist BEFORE sending: a reload or power cut must not lose track of this operation
-        store.set(INFLIGHT_KEY, JSON.stringify(op));
+        // (without the password: it is only kept in memory)
+        const { topup_password: _secret, ...storedBody } = op.body;
+        store.set(INFLIGHT_KEY, JSON.stringify({ ...op, body: storedBody }));
         await send(op);
     }
 
@@ -546,6 +592,7 @@
             CODE_UNKNOWN: 'Cliente no reconocido',
             LIMIT_EXCEEDED: 'Importe por encima del límite',
             FORBIDDEN: 'Operación no permitida',
+            PASSWORD_WRONG: 'Contraseña de recarga incorrecta',
             DUPLICATE: 'Operación repetida con datos distintos',
         };
         S.result = { ok: false, title: 'NO REALIZADO', lines: [texts[data.error_code] || data.message || 'Error', 'No se ha registrado nada'] };
@@ -737,11 +784,18 @@
     window.addEventListener('nfc-ready', startNfc);
 
     // ---------- events ----------
+    $app.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && event.target.id === 'topupInput') { event.preventDefault(); verifyTopup(); }
+    });
     $app.addEventListener('click', (event) => {
         const el = event.target.closest('[data-act]');
         if (!el || el.disabled) { return; }
         switch (el.dataset.act) {
-            case 'start': S.action = el.dataset.a; S.query = ''; S.message = ''; S.taps = []; go('customer'); startNfc(); break;
+            case 'start':
+                S.action = el.dataset.a; S.query = ''; S.message = ''; S.taps = [];
+                if (S.action === 'RECARGAR') { startRecarga(); } else { go('customer'); startNfc(); }
+                break;
+            case 'topup-ok': verifyTopup(); break;
             case 'home': home(); break;
             case 'key': pressKey(el.dataset.k); break;
             case 'denom': S.taps.push(Number(el.dataset.v)); try { navigator.vibrate?.(15); } catch { /* ignore */ } syncTaps(); break;
