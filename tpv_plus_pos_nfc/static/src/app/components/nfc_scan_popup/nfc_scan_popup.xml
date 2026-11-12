@@ -40,7 +40,7 @@
                             <i class="fa fa-tag" />
                         </span>
                         <input
-                            t-ref="valueInput"
+                            t-ref="this.inputRef"
                             type="text"
                             class="form-control form-control-lg nfc-scan-value-input text-center fw-bold fs-4"
                             t-att-value="this.state.value"

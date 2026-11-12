@@ -1,19 +1,19 @@
 /** @odoo-module */
 
-import { Component } from "@odoo/owl";
+import { Component, useProps, t } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 
 export class WalletChoicePopup extends Component {
     static template = "tpv_plus_pos_nfc.WalletChoicePopup";
     static components = { Dialog };
-    static props = {
-        close: Function,
-        getPayload: Function,
-        title: { type: String, optional: true },
-        partnerName: String,
-        walletBalance: Number,
-        orderTotal: Number,
-    };
+    props = useProps({
+        close: t.function(),
+        getPayload: t.function(),
+        title: t.string().optional(),
+        partnerName: t.string(),
+        walletBalance: t.number(),
+        orderTotal: t.number(),
+    });
 
     get payAmount() {
         return Math.max(0, Math.min(this.props.walletBalance, this.props.orderTotal));

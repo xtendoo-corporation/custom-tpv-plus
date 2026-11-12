@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates id="template" xml:space="preserve">
+    <t t-name="tpv_plus_pos_restaurant_tables.FeriaTableGrid">
+        <div class="overflow-auto h-100 w-100 bg-view p-3">
+            <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
+                <button class="btn btn-secondary btn-lg d-flex align-items-center gap-2" t-on-click="this.onAddTable">
+                    <i class="fa fa-plus-circle" /> Añadir Mesa
+                </button>
+                <button class="btn btn-outline-secondary btn-lg d-flex align-items-center gap-2" t-on-click="this.onRemoveLastTable">
+                    <i class="fa fa-minus-circle" /> Eliminar Última Mesa
+                </button>
+                <span class="ms-3 fs-5 fw-bold text-muted">
+                    Total mesas: <t t-out="this.tables.length"/>
+                </span>
+            </div>
+            <div class="feria-grid d-flex flex-wrap gap-2">
+                <t t-if="this.tables.length === 0">
+                    <div class="empty-floor d-flex align-items-center justify-content-center w-100 fs-3 text-center text-muted py-5">
+                        <span>No hay mesas disponibles.<br/>Pulsa "Añadir Mesa" para empezar.</span>
+                    </div>
+                </t>
+                <t t-foreach="this.tables" t-as="table" t-key="table.id">
+                    <div t-on-click="() => this.onClickTable(table)"
+                         class="feria-table d-flex flex-column align-items-center justify-content-center cursor-pointer rounded-3 position-relative"
+                         t-attf-class="tableId-{{table.id}} {{ table.feria_partner_name ? 'feria-occupied' : 'feria-free' }}">
+                        <div class="feria-table-number fw-bolder" t-out="table.table_number"/>
+                        <div t-if="table.feria_partner_name" t-out="table.feria_partner_name" class="feria-table-customer"/>
+                        <t t-set="changes" t-value="this.getChangeCount(table).changes"/>
+                        <div t-if="changes > 0" t-out="changes"
+                             class="feria-badge position-absolute top-0 end-0 badge rounded-pill text-bg-danger smaller fw-bolder"/>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+</templates>

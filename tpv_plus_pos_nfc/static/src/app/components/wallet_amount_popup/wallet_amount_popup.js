@@ -1,6 +1,6 @@
 /** @odoo-module */
 
-import { Component, useState } from "@odoo/owl";
+import { Component, proxy, useProps, t } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 
 // 4-column keypad: digits + the quick amounts in the last column
@@ -9,19 +9,19 @@ const KEYS = ["7", "8", "9", "half", "4", "5", "6", "max", "1", "2", "3", "⌫",
 export class WalletAmountPopup extends Component {
     static template = "tpv_plus_pos_nfc.WalletAmountPopup";
     static components = { Dialog };
-    static props = {
-        close: Function,
-        getPayload: Function,
-        title: { type: String, optional: true },
-        partnerName: String,
-        walletBalance: Number,
-        orderTotal: Number,
-        paymentMethods: { type: Array, optional: true },
-    };
+    props = useProps({
+        close: t.function(),
+        getPayload: t.function(),
+        title: t.string().optional(),
+        partnerName: t.string(),
+        walletBalance: t.number(),
+        orderTotal: t.number(),
+        paymentMethods: t.array().optional(),
+    });
 
     setup() {
         this.keys = KEYS;
-        this.state = useState({
+        this.state = proxy({
             text: this._toText(this.maxAmount),
             fresh: true, // the first key pressed replaces the suggested amount
         });

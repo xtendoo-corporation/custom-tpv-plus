@@ -1,6 +1,6 @@
 /** @odoo-module */
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, proxy, useProps, t } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { usePos } from "@point_of_sale/app/hooks/pos_hook";
 import { deserializeDateTime } from "@web/core/l10n/dates";
@@ -8,15 +8,15 @@ import { deserializeDateTime } from "@web/core/l10n/dates";
 export class CustomerHistoryPopup extends Component {
     static template = "tpv_plus_pos_nfc.CustomerHistoryPopup";
     static components = { Dialog };
-    static props = {
-        close: Function,
-        partnerId: Number,
-        partnerName: String,
-    };
+    props = useProps({
+        close: t.function(),
+        partnerId: t.number(),
+        partnerName: t.string(),
+    });
 
     setup() {
         this.pos = usePos();
-        this.state = useState({
+        this.state = proxy({
             loading: true,
             error: false,
             tab: "wallet",

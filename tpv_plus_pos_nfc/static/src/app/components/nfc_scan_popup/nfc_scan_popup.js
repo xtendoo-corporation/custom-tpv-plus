@@ -1,19 +1,20 @@
 /** @odoo-module */
 
-import { Component, useState, useRef, onMounted, onWillUnmount } from "@odoo/owl";
+import { Component, proxy, onMounted, onWillUnmount, useProps, t, signal } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { _t } from "@web/core/l10n/translation";
 
 export class NfcScanPopup extends Component {
     static template = "tpv_plus_pos_nfc.NfcScanPopup";
     static components = { Dialog };
-    static props = {
-        close: Function,
-        getPayload: Function,
-    };
+    inputRef = signal.ref();
+    props = useProps({
+        close: t.function(),
+        getPayload: t.function(),
+    });
 
     setup() {
-        this.state = useState({
+        this.state = proxy({
             value: "",
             status: "waiting",       // waiting | scanning | success | error
             statusMessage: _t("Esperando escaneo…"),
@@ -27,7 +28,7 @@ export class NfcScanPopup extends Component {
             this.state.nfcSupported = true;
         }
 
-        this.inputRef = useRef("valueInput");
+        
         this._nfcReader = null;
         this._nfcAbortController = null;
         this._barcodeTimeout = null;
@@ -223,8 +224,8 @@ export class NfcScanPopup extends Component {
     }
 
     _focusInput() {
-        if (this.inputRef.el) {
-            this.inputRef.el.focus();
+        if (this.inputRef()) {
+            this.inputRef().focus();
         }
     }
 
