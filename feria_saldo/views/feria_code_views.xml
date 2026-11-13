@@ -23,7 +23,7 @@
         <field name="model">feria.code</field>
         <field name="arch" type="xml">
             <search>
-                <field name="code"/>
+                <field name="code" filter_domain="['|', ('code', 'ilike', self), ('code_key', 'ilike', self)]"/>
                 <field name="partner_id"/>
                 <filter name="blocked" string="Bloqueados" domain="[('blocked', '=', True)]"/>
                 <filter name="individual" string="Saldo individual" domain="[('shared', '=', False)]"/>

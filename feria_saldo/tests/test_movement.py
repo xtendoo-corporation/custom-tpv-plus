@@ -114,7 +114,8 @@ class TestMovement(FeriaCommon):
             self.env['feria.movement'].create({'uuid': str(uuid.uuid4())})
 
     def test_code_normalization_and_uniqueness(self):
-        self.assertEqual(self.code.code, '04A31F')
+        self.assertEqual(self.code.code, '04:a3-1f')  # kept as typed
+        self.assertEqual(self.code.code_key, '04A31F')
         other = self.env['res.partner'].create({'name': 'Otro'})
         with self.assertRaises(Exception), mute_logger('odoo.sql_db'):
             self.env['feria.code'].create({'partner_id': other.id, 'code': '04-a3:1f'})

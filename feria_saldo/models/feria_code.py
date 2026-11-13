@@ -11,7 +11,14 @@ class FeriaCode(models.Model):
     _order = 'partner_id, id'
 
     partner_id = fields.Many2one('res.partner', string='Contacto', required=True, index=True, ondelete='restrict')
-    code = fields.Char(string='Codigo', required=True, copy=False)
+    code = fields.Char(
+        string='Codigo', required=True, copy=False,
+        help='Se guarda tal como se escribe (por ejemplo 29:A2:4D:3E). Al escanear se encuentra igual con o sin ":", "-" o espacios.',
+    )
+    code_key = fields.Char(
+        string='Clave de busqueda', compute='_compute_code_key', store=True, index=True, readonly=True,
+        help='El codigo sin separadores y en mayusculas: es lo que se compara al escanear.',
+    )
     kind = fields.Selection(
         [('nfc', 'NFC'), ('rfid', 'RFID'), ('qr', 'QR'), ('manual', 'Manual')],
         string='Tipo', required=True, default='manual',
@@ -31,7 +38,18 @@ class FeriaCode(models.Model):
         compute='_compute_balance', store=True, readonly=True, copy=False,
     )
 
-    _code_unique = models.UniqueIndex('(code)', 'Este codigo ya esta asignado a otro contacto.')
+    _code_key_unique = models.UniqueIndex('(code_key)', 'Este codigo ya esta asignado a otro contacto.')
+
+    @api.depends('code')
+    def _compute_code_key(self):
+        for code in self:
+            code.code_key = normalize_code(code.code)
+
+    @api.model
+    def _feria_find(self, raw):
+        """The code that matches what was scanned or typed, whatever separators it carries."""
+        key = normalize_code(raw)
+        return self.search([('code_key', '=', key)], limit=1) if key else self.browse()
 
     def _compute_currency_id(self):
         currency = self.env['feria.movement']._feria_currency()
@@ -55,12 +73,12 @@ class FeriaCode(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('code'):
-                vals['code'] = normalize_code(vals['code'])
+                vals['code'] = vals['code'].strip()
         return super().create(vals_list)
 
     def write(self, vals):
         if vals.get('code'):
-            vals['code'] = normalize_code(vals['code'])
+            vals['code'] = vals['code'].strip()
         if 'shared' in vals:
             for code in self.filtered(lambda c: c.shared != vals['shared'] and c.wallet_movement_ids):
                 raise UserError(

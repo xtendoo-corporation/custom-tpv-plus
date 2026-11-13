@@ -6,7 +6,7 @@ import psycopg2.errors
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from ..feria_tools import CENT, UUID_RE, FeriaError, normalize_code, serial_env, sha256_hex
+from ..feria_tools import CENT, UUID_RE, FeriaError, serial_env, sha256_hex
 
 CLOCK_SKEW_SECONDS = 300
 CHAIN_LOCK = 727001  # advisory lock key serializing the global hash chain
@@ -215,7 +215,7 @@ class FeriaMovement(models.Model):
             raise FeriaError('CODE_BLOCKED', 'This contact is blocked', 403)
         code = False
         if code_used:
-            code = self.env['feria.code'].search([('code', '=', normalize_code(code_used))], limit=1)
+            code = self.env['feria.code']._feria_find(code_used)
             if not code or code.partner_id != partner:
                 raise FeriaError('CODE_UNKNOWN', 'Unknown code', 404)
             if code.blocked:

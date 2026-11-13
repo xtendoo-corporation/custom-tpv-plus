@@ -158,7 +158,7 @@ class FeriaApi(http.Controller):
         normalized = normalize_code(raw)
         if not normalized:
             raise FeriaError('VALIDATION_ERROR', 'code is required')
-        code_record = env['feria.code'].search([('code', '=', normalized)], limit=1)
+        code_record = env['feria.code']._feria_find(normalized)
         if not code_record:
             raise FeriaError('CODE_UNKNOWN', 'Unknown code', 404)
         return code_record
