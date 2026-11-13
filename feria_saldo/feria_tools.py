@@ -9,7 +9,6 @@ import odoo.modules.module
 
 API_VERSION = '1'
 
-CODE_RE = re.compile(r'[^0-9A-Z]')
 UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
 CENT = Decimal('0.01')
 
@@ -26,8 +25,9 @@ class FeriaError(Exception):
 
 
 def normalize_code(raw):
-    """Uppercase and drop every separator: '04:a3-1f' -> '04A31F'."""
-    return CODE_RE.sub('', (raw or '').upper())
+    """Uppercase and drop separators, keeping every letter and digit (accents included):
+    'ad:24:fw' -> 'AD24FW', '04:a3-1f' -> '04A31F', 'Ñandú 7' -> 'ÑANDÚ7'."""
+    return ''.join(char for char in (raw or '').upper() if char.isalnum())
 
 
 def parse_amount(raw, allow_zero=False):
