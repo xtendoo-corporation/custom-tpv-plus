@@ -596,7 +596,7 @@ class MainActivity : ComponentActivity() {
 
                     // Si no hay contenido NDEF (texto), volvemos al ID como fallback
                     if (tagContent.isEmpty()) {
-                        tagContent = it.id.joinToString("") { byte -> "%02x".format(byte) }
+                        tagContent = NfcCodes.uidHex(it.id)
                     }
                     
                     // Toast invisible: quitamos el .show() y usamos Log

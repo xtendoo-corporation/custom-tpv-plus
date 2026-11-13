@@ -33,6 +33,7 @@
         result: null,
         waitSince: 0,
         busy: false,
+        readCode: '', // what the reader gave us last, shown when the customer is not found
         topupPass: '', // recarga password, kept only in memory (never stored) until the operation ends
     };
 
@@ -155,7 +156,7 @@
     }
 
     function home() {
-        Object.assign(S, { action: null, query: '', contact: null, by: null, orders: [], cash: null, counted: '', kept: '', amount: '', taps: [], message: '', result: null, busy: false, topupPass: '' });
+        Object.assign(S, { action: null, query: '', contact: null, by: null, orders: [], cash: null, counted: '', kept: '', amount: '', taps: [], message: '', result: null, busy: false, topupPass: '', readCode: '' });
         go('home');
     }
 
@@ -247,7 +248,7 @@
                 <h1 class="scan-title">Acerca la pulsera o tarjeta RFID al lector</h1>
                 <p class="sub">El cliente se identifica solo en cuanto se lee</p>
                 <div class="chips"><span class="chip">${icon('band')}Pulsera</span><span class="chip">${icon('card')}Tarjeta</span></div>
-                ${errLine()}</div>`;
+                ${errLine()}${S.message && S.readCode ? `<p class="sub">Código leído: <b class="read-code">${esc(S.readCode)}</b></p>` : ''}</div>`;
         },
 
         consulta() {
@@ -486,10 +487,22 @@
         return { status, data };
     }
 
+    // The code as people write it: the Android app hands over a tag UID as plain hex ("29a24d3e"),
+    // shown here as "29:A2:4D:3E". Anything else (a text written on the card, a wedge reader) is shown as read.
+    function readableCode(raw, fromNfc) {
+        const text = String(raw || '').trim();
+        const hex = text.replace(/[:\s-]/g, '');
+        if (fromNfc && hex.length >= 4 && hex.length % 2 === 0 && /^[0-9a-f]+$/i.test(hex)) {
+            return hex.toUpperCase().match(/../g).join(':');
+        }
+        return text;
+    }
+
     // A card / wristband was read: its code identifies the customer.
     async function find() {
         const text = S.query.trim();
         if (!text || S.busy) { return; }
+        S.readCode = readableCode(text, S.queryFromNfc);
         S.busy = true; S.message = '';
         try {
             const found = await showCustomer(`/contacts/lookup?code=${encodeURIComponent(text)}`, { code: text });
@@ -722,7 +735,7 @@
     // 1. USB / PDA keyboard-wedge readers (RFID or NFC) "type" the code and press Enter: captured below.
     // 2. Web NFC: Chrome on Android, or the NDEFReader polyfill the TPVPlus Android app injects.
     // 3. window.handleNfcScan(id): global entry point the native Android app calls with the tag.
-    function onCardRead(raw) {
+    function onCardRead(raw, fromNfc = false) {
         const value = String(raw || '').trim();
         // a tag is only meaningful while the app is asking "¿Qué cliente?"
         if (!value || S.view !== 'customer' || S.busy) { return; }
@@ -730,9 +743,10 @@
         if (lastCard.value === value && now - lastCard.at < 2000) { return; }
         lastCard = { value, at: now };
         S.query = value;
+        S.queryFromNfc = fromNfc;
         find();
     }
-    window.handleNfcScan = onCardRead;
+    window.handleNfcScan = (id) => onCardRead(id, true); // called by the Android app
 
     // Keyboard-wedge readers: a fast burst of characters, normally closed by Enter. There is no text field on
     // purpose (nobody searches by hand), so keystrokes are collected while the customer screen is up.
@@ -777,7 +791,7 @@
                         if (value) { break; }
                     }
                 }
-                onCardRead(value || event.serialNumber);
+                onCardRead(value || event.serialNumber, true);
             });
         } catch { nfcStarted = false; } // not allowed yet: retried on the next tap
     }
